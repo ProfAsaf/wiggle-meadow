@@ -25,6 +25,19 @@ A 4 × 3 world. A finger on the meadow never scrolls it, so dragging always move
 | **Middle** | House, garden, campfire kitchen, apple tree, pond | Toy yard: blocks, dress-up trunk, trampoline | Playground: slide, swing, seesaw, ice-cream cart | Beach: sea, boat, whale, crab, sandcastle, shells |
 | **Down** | Burrow with beds and string lights | Fossil tunnel | Mole tunnels | Treasure cave, crystals |
 
+Several fingers can each carry something at the same time.
+
+## Helping hands
+
+Carried things get pulled into the cool spot they're close to. While you carry something, the spot it's
+heading for lights up with a dashed ring (and gets ready); let go anywhere near and it slides in with a click:
+
+- a critter near a swing, the slide, a seesaw end, a bed, the balloon basket or Super Pup's back hops on;
+- food near a critter's face goes in its mouth (it opens wide, waiting), or near the pot goes in the soup;
+- a hat, glasses or bow near a critter's head goes on;
+- a block let go close to level, just above the ground or another block, straightens up and lines up (centred
+  on the block below, or edge to edge) — a ghost outline shows where it will settle.
+
 ## The deep toys
 
 - **Blocks** (toy yard) — real physics. Tap the toy box for a new block, stack them, knock towers over, and put
@@ -52,6 +65,7 @@ or the balloon basket and it rides along. Drag a critter down into the soil to t
 - `js/blocks.js`, `js/dressup.js` — physics blocks and toy box; dress-up trunk and wearables
 - `js/playground.js`, `js/beach.js` — playground and beach toys
 - `js/underground.js`, `js/caves.js` — burrow, carrots, worms, mole; crystals, chest, fossil, mushrooms, lanterns
+- `js/snap.js` — helping hands: snap targets, the glowing hint rings
 - `js/save.js` — remembers the meadow on this device
 - `js/main.js` — places everything in the world and wires up navigation
 

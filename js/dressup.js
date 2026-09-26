@@ -88,16 +88,21 @@
     hit(px, py) { return G.dist(px, py, this.x, this.y - 20) < 44; }
     onTap() { this.vy = -450; this.onGround = false; S().pop(); }
     onDragStart() { this.onGround = false; S().click(); }
-    onDrag(p, rec) { this.x = p.x + rec.ox; this.y = Math.min(p.y + rec.oy, G.floorFor(p.y + rec.oy)); }
+    onDrag(p, rec) {
+      this.x = p.x + rec.ox; this.y = Math.min(p.y + rec.oy, G.floorFor(p.y + rec.oy));
+      if (G.trackSnap) G.trackSnap(this); // the nearest head lights up
+    }
     onDrop(p, rec) {
       this.floor = G.floorFor(this.y);
+      const s = this.snap; this.snap = null;
+      if (s && s.wearer) return G.snapInto(this, s.x, s.y + 20, () => { this.dead = true; s.wearer.wear(this.type); });
       const cr = G.things.find((t) => t instanceof G.Critter && t.state !== 'held' && t.hit(this.x, this.y - 10));
       if (cr) { this.dead = true; cr.wear(this.type); return; }
       if (G.trunk && G.trunk.catches(this)) { G.trunk.swallow(this); return; }
       this.vx = G.clamp(rec.vx * 0.7, -1200, 1200); this.vy = G.clamp(rec.vy * 0.7, -1400, 1400);
     }
     update(dt) {
-      if (this.held || this.onGround) return;
+      if (this.held || this.onGround || this.snapping) return;
       this.vy += 1800 * dt; this.x = G.clamp(this.x + this.vx * dt, 30, G.W - 30); this.y += this.vy * dt; this.rot += this.vx * dt * 0.01;
       if (this.y >= this.floor) {
         this.y = this.floor;

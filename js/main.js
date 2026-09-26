@@ -69,6 +69,7 @@
   [[1200, 1010], [2150, 1040], [3000, 990], [4450, 1030], [6150, 1050]].forEach(([x, y]) => add(new G.Worm(x, y)));
 
   add(new G.Fireflies(36));
+  if (G.hints) add(G.hints); // glowing rings over the spot a carried thing will snap into
   [['bunny', 480], ['frog', 1560], ['cat', 2000], ['bear', 2330], ['chick', 3900], ['penguin', B + 580], ['mouse', 520, U]]
     .forEach(([k, x, y]) => add(new G.Critter(k, x, y)));
   G.hero = add(new G.Hero(130)); // Super Pup: tap to transform

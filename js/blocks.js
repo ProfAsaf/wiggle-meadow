@@ -52,6 +52,40 @@
     }
     return best;
   };
+  // Helping hands for builders: a block let go close to level, just above the ground or another block,
+  // straightens up and lines up (centred on the block below, or edge to edge) with a click.
+  const DIM = { cube: [72, 72], brick: [130, 58], plank: [230, 30], pillar: [38, 150] }; // width, height
+  const BASE = { tri: [64, 30.7], dome: [62, 26.3] }; // half width, centre to flat bottom
+  const poseFor = (blk) => {
+    const b = blk.body, k = blk.kind;
+    if (k === 'wheel') return null;
+    let a, hw, hh;
+    if (DIM[k]) {
+      const quarter = Math.round(b.angle / (Math.PI / 2));
+      a = quarter * (Math.PI / 2);
+      [hw, hh] = quarter & 1 ? [DIM[k][1] / 2, DIM[k][0] / 2] : [DIM[k][0] / 2, DIM[k][1] / 2];
+    } else { a = Math.round(b.angle / G.TAU) * G.TAU; [hw, hh] = BASE[k]; }
+    if (Math.abs(b.angle - a) > 0.4) return null; // too crooked to guess what was meant
+    const x = b.position.x, bottom = b.position.y + hh;
+    let sup = Math.abs(G.GROUND - bottom) < 40 ? { y: G.GROUND } : null;
+    for (const o of G.blocks) {
+      if (o === blk || o.held || o.dead) continue;
+      const ob = o.body.bounds;
+      if (ob.max.x < x - hw + 8 || ob.min.x > x + hw - 8) continue;
+      const top = G.blockSurface(o, G.clamp(x, ob.min.x + 7, ob.max.x - 7));
+      if (top !== null && Math.abs(top - bottom) < 40 && (!sup || top < sup.y)) sup = { y: top, o };
+    }
+    if (!sup) return null;
+    let tx = x;
+    if (sup.o) {
+      const ob = sup.o.body.bounds, cx = sup.o.body.position.x;
+      if (Math.abs(x - cx) < 28) tx = cx;
+      else if (Math.abs(x - hw - ob.min.x) < 22) tx = ob.min.x + hw;
+      else if (Math.abs(x + hw - ob.max.x) < 22) tx = ob.max.x - hw;
+    }
+    return { x: tx, y: sup.y - hh - 0.5, a, hh };
+  };
+
   G.bumpBlocks = (x, y, vx, vy, r = 80) => {
     for (const b of G.blocks) {
       const p = b.body.position;
@@ -83,15 +117,32 @@
       this.pin = M.Constraint.create({ pointA: { x: p.x, y: p.y }, bodyB: b, pointB: M.Vector.sub(p, b.position), stiffness: 0.2, damping: 0.08, length: 0 });
       M.Composite.add(world, this.pin); S().click();
     }
-    onDrag(p) { if (this.pin) this.pin.pointA = { x: G.clamp(p.x, 20, G.W - 20), y: Math.min(p.y, G.GROUND - 6) }; }
+    onDrag(p) {
+      if (this.pin) this.pin.pointA = { x: G.clamp(p.x, 20, G.W - 20), y: Math.min(p.y, G.GROUND - 6) };
+      const pose = poseFor(this);
+      if (pose && !this.pose) S().tick();
+      this.pose = pose; // shown as a ghost outline where it will settle
+    }
     onDrop() {
       if (this.pin) M.Composite.remove(world, this.pin);
-      this.pin = null; this.body.frictionAir = 0.01;
-      if (G.toybox && G.toybox.catchesBlock(this)) G.toybox.swallow(this);
+      this.pin = null; this.body.frictionAir = 0.01; this.pose = null;
+      if (G.toybox && G.toybox.catchesBlock(this)) return G.toybox.swallow(this);
+      const pose = poseFor(this), b = this.body;
+      if (!pose) return;
+      M.Body.setAngle(b, pose.a); M.Body.setPosition(b, { x: pose.x, y: pose.y });
+      M.Body.setVelocity(b, { x: 0, y: 0 }); M.Body.setAngularVelocity(b, 0);
+      S().snap(); G.burst('sparkle', pose.x, pose.y + pose.hh, 8, { colors: ['#ffffff', '#fff3b0'], g: 0, speed: 150, size: 9 });
     }
     remove() { this.dead = true; M.Composite.remove(world, this.body); G.blocks = G.blocks.filter((b) => b !== this); }
     draw(c) {
       const b = this.body, vs = b.vertices;
+      if (this.held && this.pose) { // ghost of where it will settle if let go now
+        const pz = this.pose, da = pz.a - b.angle, cs = Math.cos(da), sn = Math.sin(da);
+        c.save(); c.setLineDash([10, 8]); c.lineDashOffset = -G.time * 30;
+        c.strokeStyle = '#ffffff'; c.lineWidth = 4; c.fillStyle = 'rgba(255,255,255,.25)'; c.beginPath();
+        vs.forEach((v, i) => { const rx = v.x - b.position.x, ry = v.y - b.position.y, X = pz.x + rx * cs - ry * sn, Y = pz.y + rx * sn + ry * cs; i ? c.lineTo(X, Y) : c.moveTo(X, Y); });
+        c.closePath(); c.fill(); c.stroke(); c.restore();
+      }
       G.path(c, this.color, (p) => { vs.forEach((v, i) => (i ? p.lineTo(v.x, v.y) : p.moveTo(v.x, v.y))); p.closePath(); }, 5);
       c.translate(b.position.x, b.position.y); c.rotate(b.angle);
       c.fillStyle = this.light; c.strokeStyle = this.dark; c.lineWidth = 4; c.lineCap = 'round';

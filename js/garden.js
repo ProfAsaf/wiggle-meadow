@@ -12,14 +12,22 @@
     hit(px, py) { return G.dist(px, py, this.x, this.y) < 34; }
     onTap() { this.vy = -520; this.onGround = false; S().pop(); }
     onDragStart() { this.claimed = null; this.onGround = false; S().click(); }
+    onDrag(p, rec) {
+      const y = p.y + rec.oy;
+      this.x = G.clamp(p.x + rec.ox, 20, G.W - 20); this.y = Math.min(y, G.floorFor(y));
+      if (G.trackSnap) G.trackSnap(this); // a hungry mouth or the soup pot lights up
+    }
     onDrop(p, rec) {
       this.floor = G.floorFor(this.y);
+      const s = this.snap; this.snap = null;
+      if (s && s.eater) return G.snapInto(this, s.x, s.y, () => { if (s.eater.state === 'sleep') s.eater.wakeUntil = G.time + 6; s.eater.eat(this); });
+      if (s && s.pot) return G.snapInto(this, s.x, s.y, () => s.pot.add(this));
       const who = G.things.find((t) => t instanceof G.Critter && t.state !== 'held' && t.hit(this.x, this.y));
       if (who) { if (who.state === 'sleep') who.wakeUntil = G.time + 6; return who.eat(this); }
       this.vx = G.clamp(rec.vx * 0.8, -1500, 1500); this.vy = G.clamp(rec.vy * 0.8, -1500, 1500);
     }
     update(dt) {
-      if (this.held) return;
+      if (this.held || this.snapping) return;
       const floor = this.floor - this.r + 4;
       if (!this.onGround) {
         this.vy += 2000 * dt; this.x += this.vx * dt; this.y += this.vy * dt;

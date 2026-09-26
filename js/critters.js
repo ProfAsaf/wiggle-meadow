@@ -124,12 +124,15 @@
       this.y = Math.min(y, G.floorFor(y));
       this.swing = G.lerp(this.swing, G.clamp(-rec.vx * 0.0011, -0.9, 0.9), 0.2);
       this.grabY = -rec.oy;
+      if (G.trackSnap && !this.isSuper) G.trackSnap(this); // light up a nearby seat
     }
     onDrop(p, rec) {
       this.floor = G.floorFor(this.y); this.homeX = this.x;
-      const seat = G.seats.filter((s) => !s.occupant && !s.disabled && s.owner !== this && G.dist(s.x, s.y, this.x, this.y) < (s.radius || 90))
-        .sort((a, b) => G.dist(a.x, a.y, this.x, this.y) - G.dist(b.x, b.y, this.x, this.y))[0];
-      if (seat) return this.sit(seat);
+      const s = this.snap; this.snap = null;
+      if (s && s.seat && !s.seat.occupant) { // let go near a seat: hop right in
+        S().snap(); G.burst('sparkle', s.seat.x, s.seat.y - 40, 8, { colors: ['#ffffff', '#fff3b0'], g: 0, speed: 150, size: 9 });
+        return this.sit(s.seat);
+      }
       this.vx = G.clamp(rec.vx * 0.8, -1600, 1600); this.vy = G.clamp(rec.vy * 0.8, -1800, 1800);
       this.setState('air'); this.spin = Math.abs(this.vx) > 900 ? Math.sign(this.vx) * G.TAU : 0;
       this.say(Math.abs(this.vx) + Math.abs(this.vy) > 900 ? 'happy' : 'open', 'open', 0.6);

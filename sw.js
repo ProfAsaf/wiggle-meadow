@@ -7,7 +7,7 @@ const CORE = [
   './', './index.html', './manifest.webmanifest', './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png',
   './js/core.js', './js/audio.js', './js/backdrop.js', './js/critters.js', './js/hero.js', './js/sky.js', './js/garden.js', './js/home.js',
   './js/playground.js', './js/beach.js', './js/skyzone.js', './js/underground.js', './js/caves.js',
-  './js/blocks.js', './js/dressup.js', './js/kitchen.js', './js/save.js', './js/main.js',
+  './js/blocks.js', './js/dressup.js', './js/kitchen.js', './js/snap.js', './js/save.js', './js/main.js',
   'https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js',
 ];
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com', 'cdnjs.cloudflare.com'];

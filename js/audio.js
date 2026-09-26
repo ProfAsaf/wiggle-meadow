@@ -100,6 +100,8 @@
     thunk() { tone({ f0: 220, f1: 90, dur: 0.12, vol: 0.3 }); noise({ dur: 0.05, vol: 0.15, type: 'lowpass', f0: 900 }); },
     toot() { tone({ type: 'triangle', f0: 392, dur: 0.18, vol: 0.2 }); tone({ type: 'triangle', f0: 523, dur: 0.3, vol: 0.2, at: 0.2 }); },
     launch() { noise({ dur: 2.2, vol: 0.3, type: 'lowpass', f0: 300, f1: 1800, attack: 0.3 }); tone({ f0: 80, f1: 400, dur: 2, vol: 0.1, attack: 0.3 }); },
+    tick() { tone({ f0: 1500, f1: 1900, dur: 0.05, vol: 0.07, attack: 0.003 }); },
+    snap() { tone({ f0: 880, f1: 1500, dur: 0.07, vol: 0.18, attack: 0.003 }); noise({ dur: 0.03, vol: 0.14, f0: 3200 }); tone({ f0: 1760, dur: 0.18, vol: 0.06, at: 0.05 }); },
     clack(v = 5) { const f = 600 + Math.random() * 500; tone({ type: 'triangle', f0: f, f1: f * 0.7, dur: 0.06, vol: Math.min(0.22, v * 0.02), attack: 0.002 }); noise({ dur: 0.03, vol: Math.min(0.12, v * 0.01), f0: 2400 }); },
     gulp() { tone({ f0: 500, f1: 180, dur: 0.18, vol: 0.2 }); tone({ f0: 300, f1: 700, dur: 0.1, vol: 0.12, at: 0.18 }); },
     stir() { noise({ dur: 0.7, vol: 0.12, type: 'lowpass', f0: 400, f1: 900, attack: 0.2 }); for (let i = 0; i < 3; i++) tone({ f0: 300 + i * 90, f1: 700, dur: 0.08, vol: 0.08, at: 0.1 + i * 0.18 }); },

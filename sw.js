@@ -5,7 +5,7 @@
 const CACHE = 'wiggle-meadow';
 const CORE = [
   './', './index.html', './manifest.webmanifest', './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png',
-  './js/core.js', './js/audio.js', './js/backdrop.js', './js/critters.js', './js/sky.js', './js/garden.js', './js/home.js',
+  './js/core.js', './js/audio.js', './js/backdrop.js', './js/critters.js', './js/hero.js', './js/sky.js', './js/garden.js', './js/home.js',
   './js/playground.js', './js/beach.js', './js/skyzone.js', './js/underground.js', './js/caves.js', './js/main.js',
 ];
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];

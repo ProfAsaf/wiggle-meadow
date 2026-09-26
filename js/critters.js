@@ -9,6 +9,7 @@
     chick: { body: '#ffdf5e', belly: '#fff3b0', feet: '#ffa53c', size: 0.74, pitch: 1.4, voice: (p) => S().peep(p) },
     penguin: { body: '#46557a', belly: '#ffffff', feet: '#ffa53c', size: 0.95, pitch: 1.05, voice: (p) => S().honk(p) },
     mouse: { body: '#bdb6cf', belly: '#f1ebf8', size: 0.82, pitch: 1.6, voice: (p) => S().squeak(p) },
+    pup: { body: '#f3d3a6', belly: '#fff3e2', size: 1, pitch: 1.1, voice: (p) => S().bark(p) },
   };
   const GRAV = 2300;
   const waterAt = (x) => G.waters.find((w) => w.inside(x));
@@ -97,7 +98,7 @@
     }
     onDrop(p, rec) {
       this.floor = G.floorFor(this.y); this.homeX = this.x;
-      const seat = G.seats.filter((s) => !s.occupant && G.dist(s.x, s.y, this.x, this.y) < 90)
+      const seat = G.seats.filter((s) => !s.occupant && !s.disabled && s.owner !== this && G.dist(s.x, s.y, this.x, this.y) < (s.radius || 90))
         .sort((a, b) => G.dist(a.x, a.y, this.x, this.y) - G.dist(b.x, b.y, this.x, this.y))[0];
       if (seat) return this.sit(seat);
       this.vx = G.clamp(rec.vx * 0.8, -1600, 1600); this.vy = G.clamp(rec.vy * 0.8, -1800, 1800);
@@ -227,23 +228,27 @@
       const sleepy = st === 'sleep' || (st === 'ride' && this.seat && this.seat.kind === 'bed');
       const breathe = sleepy ? Math.sin(t * 1.6) * 0.04 : Math.sin(t * 2.6 + this.x) * 0.018;
       const sq = G.clamp(this.sqv || 0, -0.45, 0.45) + breathe;
-      c.translate(this.x, this.y + yOff);
+      c.translate(this.x + (this.offX || 0), this.y + yOff + (this.offY || 0));
       const py = st === 'held' ? this.grabY || -100 * s : 0;
       c.translate(0, py); c.rotate(rot); c.translate(0, -py);
       c.scale(s * (1 + sq * 0.7), s * (1 - sq));
 
-      const kick = st === 'held' || st === 'air' ? Math.sin(t * 22) * 5 : 0;
+      const kick = st === 'held' || st === 'air' ? Math.sin(t * 22) * 5 : st === 'fly' ? Math.sin(t * 6) * 3 : 0;
       const sit = st === 'sleep' || st === 'ride' ? 6 : 0;
+      if (this.back) this.back(c, t);
       for (const d of [-1, 1]) G.ellipse(c, d * 19, -7 + kick * d + sit, 15, 9, this.feet || this.body);
       if (this.kind === 'cat' || this.kind === 'mouse') this.tail(c, t);
       G.ellipse(c, 0, -42 + sit, 38, 36 - sit * 0.5, this.body);
       G.ellipse(c, 0, -38 + sit, 24, 21, this.belly, 0);
+      if (this.chest) this.chest(c, t, sit);
       for (const d of [-1, 1]) {
         let a = d * (0.35 + (st === 'held' ? 0.9 : 0));
         if (d === 1 && this.armT > 0) a = 2.1 + Math.sin(t * 16) * 0.5;
         if (st === 'dance') a = d * (1.2 + Math.sin(t * 12 + d) * 0.6);
         if (st === 'ride' && !sleepy) a = d * 1.3;
         if (this.flap > 0 || ((this.kind === 'chick' || this.kind === 'penguin') && st === 'air')) a = d * (1.2 + Math.sin(t * 40) * 0.6);
+        if (st === 'ride' && this.seat && this.seat.kind === 'carry') a = d * 2.8; // hanging on with both hands
+        if (this.armPose) a = this.armPose(d, a, t);
         c.save(); c.translate(d * 33, -58 + sit); c.rotate(-a);
         G.ellipse(c, 0, 12, 10, 17, this.body); c.restore();
       }
@@ -276,6 +281,9 @@
       } else if (k === 'cat') for (const d of [-1, 1]) {
         G.path(c, this.body, (p) => { p.moveTo(d * 40, -112); p.lineTo(d * 34, -158); p.lineTo(d * 8, -136); p.closePath(); });
         G.path(c, '#ff9fbb', (p) => { p.moveTo(d * 33, -122); p.lineTo(d * 31, -146); p.lineTo(d * 17, -134); p.closePath(); }, 0);
+      } else if (k === 'pup') for (const d of [-1, 1]) {
+        c.save(); c.translate(d * 34, -124); c.rotate(d * (0.35 + Math.sin(t * 3 + d) * 0.06) + e * 0.6 + (this.earFlap || 0) * d);
+        G.ellipse(c, 0, 28, 15, 34, '#c98d5b'); c.restore();
       } else if (k === 'frog') for (const d of [-1, 1]) G.circle(c, d * 21, -134, 19, this.body);
       else if (k === 'chick') for (const i of [-1, 0, 1]) G.ellipse(c, i * 7, -143, 5, 12, this.body, 4, i * 0.4);
     }
@@ -287,6 +295,7 @@
       G.eyes(c, lx * 5, ey + ly * 4, k === 'frog' ? 21 : 16, 5.5, lx, ly, this.blink, mood);
       G.cheeks(c, lx * 3, -84, 27, 7.5);
       if (k === 'bear') { G.ellipse(c, lx * 4, -82, 18, 13, this.belly, 0); G.ellipse(c, lx * 4, -89, 7, 5, G.INK, 0); }
+      if (k === 'pup') { G.ellipse(c, lx * 4, -82, 17, 12, this.belly, 0); G.ellipse(c, lx * 4, -90, 8, 6, G.INK, 0); }
       if (k === 'bunny' || k === 'mouse') G.ellipse(c, lx * 4, -90, 5, 3.5, '#ff7fa3', 0);
       if (k === 'cat' || k === 'mouse') {
         c.strokeStyle = G.INK; c.lineWidth = 2.5;

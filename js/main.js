@@ -56,6 +56,7 @@
   add(new G.Fireflies(30));
   [['bunny', 450], ['cat', 600], ['bear', 880], ['frog', 1555], ['chick', 2450], ['penguin', 3780], ['mouse', 520, U]]
     .forEach(([k, x, y]) => add(new G.Critter(k, x, y)));
+  G.hero = add(new G.Hero(130)); // Super Pup: tap to transform
 
   // tapping nothing in particular still does something
   G.onEmptyTap = (p) => {
@@ -91,8 +92,12 @@
     const k = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
     if (k && $('title').hidden) { e.preventDefault(); step(...k); }
   });
-  const cells = [...document.querySelectorAll('#map button')];
-  cells.forEach((b) => b.addEventListener('click', () => { S().unlock(); S().whoosh(); G.camTo(COLS[+b.dataset.c], ROWS[+b.dataset.r]); }));
+  const map = $('map'), mapBtn = $('mapBtn');
+  const setMap = (open) => { map.hidden = !open; mapBtn.setAttribute('aria-expanded', String(open)); };
+  mapBtn.addEventListener('click', () => { S().unlock(); S().click(); setMap(map.hidden); });
+  const cells = [...map.querySelectorAll('button')];
+  cells.forEach((b) => b.addEventListener('click', () => { S().unlock(); S().whoosh(); G.camTo(COLS[+b.dataset.c], ROWS[+b.dataset.r]); setMap(false); }));
+  G.canvas.addEventListener('pointerdown', () => setMap(false));
   let lastKey = '';
   G.onFrame = () => {
     const [x0, y0] = G.clampCam(-1e9, -1e9), [x1, y1] = G.clampCam(1e9, 1e9);
@@ -107,10 +112,10 @@
   };
 
   // ----- title card + sound toggle -----
-  const title = $('title'), play = $('play'), mute = $('mute'), map = $('map');
+  const title = $('title'), play = $('play'), mute = $('mute');
   play.addEventListener('click', () => {
     S().unlock();
-    title.hidden = true; mute.hidden = false; map.hidden = false; lastKey = '';
+    title.hidden = true; mute.hidden = false; mapBtn.hidden = false; lastKey = '';
     S().tada();
     try { navigator.wakeLock && navigator.wakeLock.request('screen').catch(() => {}); } catch (_) {}
   });

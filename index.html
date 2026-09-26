@@ -12,6 +12,8 @@
     --sky: #74c4ee;
     --cream: #fff1d6;
     --scrim: rgba(59, 47, 74, 0.3);
+    --glass: rgba(255, 246, 228, 0.5);
+    --glass-edge: rgba(59, 47, 74, 0.28);
     color-scheme: light;
   }
   [hidden] { display: none !important; }
@@ -25,7 +27,7 @@
   #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
   #title {
-    position: fixed; inset: 0; z-index: 2;
+    position: fixed; inset: 0; z-index: 3;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
     padding-inline: 16px; background: var(--scrim); text-align: center;
   }
@@ -56,48 +58,32 @@
     display: grid; place-items: center; animation: pulse 1.6s ease-in-out infinite;
   }
   #play:active { transform: translateY(6px); box-shadow: 0 3px 0 var(--ink); }
-  #play:focus-visible, #mute:focus-visible { outline: 5px solid #fff; outline-offset: 5px; }
   @keyframes pulse { 0%, 100% { scale: 1; } 50% { scale: 1.07; } }
+  button:focus-visible { outline: 4px solid #fff; outline-offset: 3px; }
 
-  #mute {
-    position: fixed; z-index: 1; cursor: pointer;
-    top: calc(env(safe-area-inset-top, 0px) + 14px); right: calc(env(safe-area-inset-right, 0px) + 14px);
-    width: 58px; height: 58px; border-radius: 50%; padding: 0;
-    border: 5px solid var(--ink); background: var(--cream); box-shadow: 0 5px 0 var(--ink);
+  /* top-right corner: map and sound, small and quiet */
+  #hud {
+    position: fixed; z-index: 2; display: flex; gap: 10px;
+    top: calc(env(safe-area-inset-top, 0px) + 12px); right: calc(env(safe-area-inset-right, 0px) + 12px);
+  }
+  .chip {
+    width: 48px; height: 48px; padding: 0; cursor: pointer; border-radius: 50%;
+    border: 3px solid var(--glass-edge); background: var(--glass);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
     display: grid; place-items: center;
   }
+  .chip:active, .chip[aria-expanded="true"] { background: var(--cream); border-color: var(--ink); }
   #mute .off { display: none; }
   #mute[aria-pressed="true"] .on { display: none; }
   #mute[aria-pressed="true"] .off { display: block; }
 
-  /* big arrows on the edges to travel around the world */
-  .nav {
-    position: fixed; z-index: 1; width: 74px; height: 74px; padding: 0; cursor: pointer; border-radius: 50%;
-    border: 5px solid var(--ink); background: var(--sun); box-shadow: 0 6px 0 var(--ink);
-    display: grid; place-items: center; opacity: 0.94;
-  }
-  .nav:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--ink); }
-  .nav:focus-visible, #map button:focus-visible { outline: 5px solid #fff; outline-offset: 4px; }
-  #navL { left: calc(env(safe-area-inset-left, 0px) + 12px); top: calc(50% - 37px); animation: nudgeL 2.8s ease-in-out infinite; }
-  #navR { right: calc(env(safe-area-inset-right, 0px) + 12px); top: calc(50% - 37px); animation: nudgeR 2.8s ease-in-out infinite; }
-  #navU { top: calc(env(safe-area-inset-top, 0px) + 12px); left: calc(50% - 37px); animation: nudgeU 2.8s ease-in-out infinite 1.4s; }
-  #navD { bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); left: calc(50% - 37px); animation: nudgeD 2.8s ease-in-out infinite 1.4s; }
-  #navR svg { transform: rotate(180deg); }
-  #navU svg { transform: rotate(90deg); }
-  #navD svg { transform: rotate(-90deg); }
-  @keyframes nudgeL { 0%, 70%, 100% { translate: 0 0; } 80% { translate: -9px 0; } 90% { translate: 2px 0; } }
-  @keyframes nudgeR { 0%, 70%, 100% { translate: 0 0; } 80% { translate: 9px 0; } 90% { translate: -2px 0; } }
-  @keyframes nudgeU { 0%, 70%, 100% { translate: 0 0; } 80% { translate: 0 -9px; } 90% { translate: 0 2px; } }
-  @keyframes nudgeD { 0%, 70%, 100% { translate: 0 0; } 80% { translate: 0 9px; } 90% { translate: 0 -2px; } }
-
-  /* the little map: tap a square to fly there */
+  /* the map opens from its button: tap a square to fly there */
   #map {
-    position: fixed; z-index: 1;
-    top: calc(env(safe-area-inset-top, 0px) + 12px); left: calc(env(safe-area-inset-left, 0px) + 12px);
-    display: grid; grid-template-columns: repeat(3, 36px); gap: 4px; padding: 6px;
-    background: var(--cream); border: 4px solid var(--ink); border-radius: 14px; box-shadow: 0 4px 0 var(--ink);
+    position: absolute; top: 58px; right: 0;
+    display: grid; grid-template-columns: repeat(3, 40px); gap: 5px; padding: 8px;
+    background: var(--cream); border: 4px solid var(--ink); border-radius: 16px; box-shadow: 0 5px 0 var(--ink);
   }
-  #map button { width: 36px; height: 26px; padding: 0; cursor: pointer; border: 2px solid var(--ink); border-radius: 7px; position: relative; }
+  #map button { width: 40px; height: 30px; padding: 0; cursor: pointer; border: 2px solid var(--ink); border-radius: 8px; position: relative; }
   #map button[aria-current="true"] { box-shadow: 0 0 0 3px var(--coral); }
   #map button[aria-current="true"]::after {
     content: ""; position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px;
@@ -109,6 +95,29 @@
   #map .beach { background: linear-gradient(#bfe6fa 48%, transparent 48%), linear-gradient(90deg, #f3dca2 55%, #63c3ee 55%); }
   #map .under { background: linear-gradient(#9b6b4a 40%, #5b3a2b 40%); }
 
+  /* see-through tabs on the screen edges: there's more world this way */
+  .nav {
+    position: fixed; z-index: 1; padding: 0; cursor: pointer; display: grid; place-items: center;
+    border: 3px solid var(--glass-edge); background: var(--glass);
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  }
+  .nav::before { content: ""; position: absolute; inset: -16px; } /* bigger target than it looks */
+  .nav:active { background: var(--cream); border-color: var(--ink); }
+  .nav svg { opacity: 0.8; }
+  #navL, #navR { top: calc(50% - 42px); width: 44px; height: 84px; }
+  #navU, #navD { left: calc(50% - 42px); width: 84px; height: 44px; }
+  #navL { left: env(safe-area-inset-left, 0px); border-left: 0; border-radius: 0 42px 42px 0; animation: nudgeL 1.2s ease-in-out 0.6s 2; }
+  #navR { right: env(safe-area-inset-right, 0px); border-right: 0; border-radius: 42px 0 0 42px; animation: nudgeR 1.2s ease-in-out 0.6s 2; }
+  #navU { top: env(safe-area-inset-top, 0px); border-top: 0; border-radius: 0 0 42px 42px; animation: nudgeU 1.2s ease-in-out 0.6s 2; }
+  #navD { bottom: env(safe-area-inset-bottom, 0px); border-bottom: 0; border-radius: 42px 42px 0 0; animation: nudgeD 1.2s ease-in-out 0.6s 2; }
+  #navR svg { transform: rotate(180deg); }
+  #navU svg { transform: rotate(90deg); }
+  #navD svg { transform: rotate(-90deg); }
+  @keyframes nudgeL { 0%, 100% { translate: 0 0; } 50% { translate: -6px 0; } }
+  @keyframes nudgeR { 0%, 100% { translate: 0 0; } 50% { translate: 6px 0; } }
+  @keyframes nudgeU { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
+  @keyframes nudgeD { 0%, 100% { translate: 0 0; } 50% { translate: 0 6px; } }
+
   @media (prefers-reduced-motion: reduce) {
     #title h1 span, #play, .nav { animation: none; }
   }
@@ -118,38 +127,43 @@
 
 <div id="title">
   <h1 aria-label="Wiggle Meadow"><span>W</span><span>i</span><span>g</span><span>g</span><span>l</span><span>e</span> <span>M</span><span>e</span><span>a</span><span>d</span><span>o</span><span>w</span></h1>
-  <p>Tap it, drag it, toss it. Follow the arrows to explore.</p>
+  <p>Tap it, drag it, toss it. There's more world past the edges.</p>
   <button id="play" type="button" aria-label="Play">
     <svg width="56" height="60" viewBox="0 0 56 60" aria-hidden="true"><path d="M10 6 L50 30 L10 54 Z" fill="#fff" stroke="#3b2f4a" stroke-width="6" stroke-linejoin="round"/></svg>
   </button>
 </div>
 
-<button id="mute" type="button" aria-label="Turn sound off" aria-pressed="false" hidden>
-  <svg class="on" width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path d="M4 11h5l7-6v20l-7-6H4z" fill="#3b2f4a"/><path d="M20 10c2 2 2 8 0 10M23.5 7c4 4 4 12 0 16" stroke="#3b2f4a" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
-  <svg class="off" width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path d="M4 11h5l7-6v20l-7-6H4z" fill="#3b2f4a"/><path d="M20 11l7 8M27 11l-7 8" stroke="#3b2f4a" stroke-width="3" stroke-linecap="round"/></svg>
-</button>
+<div id="hud">
+  <button id="mapBtn" class="chip" type="button" aria-label="Map" aria-expanded="false" aria-controls="map" hidden>
+    <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><path d="M2 5l7-3 8 3 7-3v19l-7 3-8-3-7 3z" fill="#fff1d6" stroke="#3b2f4a" stroke-width="2.5" stroke-linejoin="round"/><path d="M9 2v19M17 5v19" stroke="#3b2f4a" stroke-width="2.5"/></svg>
+  </button>
+  <button id="mute" class="chip" type="button" aria-label="Turn sound off" aria-pressed="false" hidden>
+    <svg class="on" width="26" height="26" viewBox="0 0 30 30" aria-hidden="true"><path d="M4 11h5l7-6v20l-7-6H4z" fill="#3b2f4a"/><path d="M20 10c2 2 2 8 0 10M23.5 7c4 4 4 12 0 16" stroke="#3b2f4a" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
+    <svg class="off" width="26" height="26" viewBox="0 0 30 30" aria-hidden="true"><path d="M4 11h5l7-6v20l-7-6H4z" fill="#3b2f4a"/><path d="M20 11l7 8M27 11l-7 8" stroke="#3b2f4a" stroke-width="3" stroke-linecap="round"/></svg>
+  </button>
+  <nav id="map" aria-label="Map" hidden>
+    <button type="button" class="space" data-c="0" data-r="0" aria-label="Sky above the house"></button>
+    <button type="button" class="space" data-c="1" data-r="0" aria-label="Outer space"></button>
+    <button type="button" class="space" data-c="2" data-r="0" aria-label="Sky above the beach"></button>
+    <button type="button" class="home" data-c="0" data-r="1" aria-label="House and garden"></button>
+    <button type="button" class="park" data-c="1" data-r="1" aria-label="Playground"></button>
+    <button type="button" class="beach" data-c="2" data-r="1" aria-label="Beach"></button>
+    <button type="button" class="under" data-c="0" data-r="2" aria-label="Burrow"></button>
+    <button type="button" class="under" data-c="1" data-r="2" aria-label="Mole tunnels"></button>
+    <button type="button" class="under" data-c="2" data-r="2" aria-label="Treasure cave"></button>
+  </nav>
+</div>
 
-<nav id="map" aria-label="Map" hidden>
-  <button type="button" class="space" data-c="0" data-r="0" aria-label="Sky above the house"></button>
-  <button type="button" class="space" data-c="1" data-r="0" aria-label="Outer space"></button>
-  <button type="button" class="space" data-c="2" data-r="0" aria-label="Sky above the beach"></button>
-  <button type="button" class="home" data-c="0" data-r="1" aria-label="House and garden"></button>
-  <button type="button" class="park" data-c="1" data-r="1" aria-label="Playground"></button>
-  <button type="button" class="beach" data-c="2" data-r="1" aria-label="Beach"></button>
-  <button type="button" class="under" data-c="0" data-r="2" aria-label="Burrow"></button>
-  <button type="button" class="under" data-c="1" data-r="2" aria-label="Mole tunnels"></button>
-  <button type="button" class="under" data-c="2" data-r="2" aria-label="Treasure cave"></button>
-</nav>
-
-<button id="navL" class="nav" type="button" aria-label="Go left" hidden><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><path d="M21 6 L9 17 L21 28" fill="none" stroke="#3b2f4a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-<button id="navR" class="nav" type="button" aria-label="Go right" hidden><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><path d="M21 6 L9 17 L21 28" fill="none" stroke="#3b2f4a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-<button id="navU" class="nav" type="button" aria-label="Go up" hidden><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><path d="M21 6 L9 17 L21 28" fill="none" stroke="#3b2f4a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-<button id="navD" class="nav" type="button" aria-label="Go down" hidden><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><path d="M21 6 L9 17 L21 28" fill="none" stroke="#3b2f4a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<button id="navL" class="nav" type="button" aria-label="Go left" hidden><svg width="24" height="24" viewBox="0 0 34 34" aria-hidden="true"><path d="M21 6 L9 17 L21 28" fill="none" stroke="#3b2f4a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<button id="navR" class="nav" type="button" aria-label="Go right" hidden><svg width="24" height="24" viewBox="0 0 34 34" aria-hidden="true"><path d="M21 6 L9 17 L21 28" fill="none" stroke="#3b2f4a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<button id="navU" class="nav" type="button" aria-label="Go up" hidden><svg width="24" height="24" viewBox="0 0 34 34" aria-hidden="true"><path d="M21 6 L9 17 L21 28" fill="none" stroke="#3b2f4a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<button id="navD" class="nav" type="button" aria-label="Go down" hidden><svg width="24" height="24" viewBox="0 0 34 34" aria-hidden="true"><path d="M21 6 L9 17 L21 28" fill="none" stroke="#3b2f4a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 
 <script src="js/core.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/backdrop.js"></script>
 <script src="js/critters.js"></script>
+<script src="js/hero.js"></script>
 <script src="js/sky.js"></script>
 <script src="js/garden.js"></script>
 <script src="js/home.js"></script>

@@ -5,7 +5,7 @@
     things: [], particles: [], tweens: [], timers: [], list: [],
     catchers: [], seats: [], waters: [],
     time: 0, night: 0, scale: 1, base: 1, zoom: 1, ZMIN: 0.55, ZMAX: 2.4, vw: 1600, vh: 900, sw: 0, sh: 0, pinch: null,
-    cam: { x: 800, y: 450, tx: 800, ty: 450, vx: 0, vy: 0 },
+    cam: { x: 800, y: 450, vx: 0, vy: 0, pushX: 0, pushY: 0, glide: null },
     view: { x0: 0, y0: 0, x1: 1600, y1: 900 },
     pointers: new Map(),
     look: { x: 800, y: 500, t: -99 }, // last place a finger touched, for eyes to follow
@@ -158,7 +158,15 @@
     G.vw >= G.W ? G.W / 2 : G.clamp(x, G.vw / 2, G.W - G.vw / 2),
     G.vh >= G.BOTTOM - G.TOP ? (G.TOP + G.BOTTOM) / 2 : G.clamp(y, G.TOP + G.vh / 2, G.BOTTOM - G.vh / 2),
   ];
-  G.camTo = (x, y) => { [cam.tx, cam.ty] = G.clampCam(x, y); cam.vx = cam.vy = 0; };
+  // The view moves only when asked: gliding to a spot (arrow taps, the map), rolling while an arrow is held,
+  // or rolling while something is carried to a screen edge. A finger on the meadow never scrolls it.
+  G.camSet = (x, y) => { [cam.x, cam.y] = G.clampCam(x, y); cam.glide = null; cam.vx = cam.vy = 0; };
+  G.camTo = (x, y, dur) => {
+    const [tx, ty] = G.clampCam(x, y), d = Math.hypot(tx - cam.x, ty - cam.y);
+    cam.glide = d < 2 ? null : { x0: cam.x, y0: cam.y, x1: tx, y1: ty, t: 0, dur: dur || G.clamp(d / 1450, 0.6, 1.5) };
+  };
+  G.camGoal = () => (cam.glide ? [cam.glide.x1, cam.glide.y1] : [cam.x, cam.y]);
+  G.push = (dx, dy) => { cam.pushX = dx; cam.pushY = dy; if (dx || dy) cam.glide = null; };
   const applyScale = () => { G.scale = G.base * G.zoom; G.vw = G.sw / G.scale; G.vh = G.sh / G.scale; };
   G.resize = () => {
     dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -168,7 +176,7 @@
     s = Math.max(s, (G.sh / 900) * 0.72); // tall phones zoom in instead of shrinking the meadow
     G.base = s; applyScale();
     [cam.x, cam.y] = G.clampCam(cam.x, cam.y);
-    [cam.tx, cam.ty] = G.clampCam(cam.tx, cam.ty);
+    if (cam.glide) [cam.glide.x1, cam.glide.y1] = G.clampCam(cam.glide.x1, cam.glide.y1);
   };
   window.addEventListener('resize', G.resize);
   G.resize();
@@ -179,7 +187,7 @@
     G.zoom = G.clamp(z, G.ZMIN, G.ZMAX); applyScale();
     const after = toWorld(sx, sy);
     [cam.x, cam.y] = G.clampCam(cam.x + before.x - after.x, cam.y + before.y - after.y);
-    cam.tx = cam.x; cam.ty = cam.y; cam.vx = cam.vy = 0;
+    cam.glide = null; cam.vx = cam.vy = 0;
   };
 
   G.add = (t) => { G.things.push(t); return t; };
@@ -201,16 +209,15 @@
     const thing = G.pickAt(p.x, p.y, (t) => !t.held);
     const rec = {
       sx0: sx, sy0: sy, sx, sy, x0: p.x, y0: p.y, x: p.x, y: p.y, t0: G.time, lt: G.time, thing,
-      drag: false, pan: false, vx: 0, vy: 0, svx: 0, svy: 0, cx0: cam.x, cy0: cam.y,
+      drag: false, vx: 0, vy: 0,
     };
     G.pointers.set(e.pointerId, rec);
-    cam.vx = cam.vy = 0;
     try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
     // A second finger while the first isn't holding anything: pinch to zoom (and two-finger pan).
     const other = [...G.pointers.values()].filter((r) => r !== rec && !r.dead && !r.drag && !(r.thing && r.thing.draggable));
     if (!G.pinch && other.length === 1 && !(thing && thing.draggable)) {
       const a = other[0], mx = (a.sx + sx) / 2, my = (a.sy + sy) / 2;
-      a.pinch = rec.pinch = true; a.pan = rec.pan = false;
+      a.pinch = rec.pinch = true; cam.glide = null;
       G.pinch = { a, b: rec, d0: Math.max(20, Math.hypot(a.sx - sx, a.sy - sy)), z0: G.zoom, w0: toWorld(mx, my) };
       return;
     }
@@ -221,7 +228,6 @@
     G.zoom = G.clamp((P.z0 * d) / P.d0, G.ZMIN, G.ZMAX); applyScale();
     const w = toWorld((P.a.sx + P.b.sx) / 2, (P.a.sy + P.b.sy) / 2);
     [cam.x, cam.y] = G.clampCam(cam.x + P.w0.x - w.x, cam.y + P.w0.y - w.y);
-    cam.tx = cam.x; cam.ty = cam.y;
   };
   canvas.addEventListener('pointermove', (e) => {
     const rec = G.pointers.get(e.pointerId);
@@ -230,18 +236,11 @@
     G.look = { x: p.x, y: p.y, t: G.time };
     const dt = Math.max(0.008, G.time - rec.lt);
     rec.vx = G.lerp(rec.vx, (p.x - rec.x) / dt, 0.5); rec.vy = G.lerp(rec.vy, (p.y - rec.y) / dt, 0.5);
-    rec.svx = G.lerp(rec.svx, (sx - rec.sx) / dt, 0.5); rec.svy = G.lerp(rec.svy, (sy - rec.sy) / dt, 0.5);
     rec.x = p.x; rec.y = p.y; rec.sx = sx; rec.sy = sy; rec.lt = G.time;
     if (rec.dead) return;
     if (rec.pinch) { if (G.pinch) pinchMove(); return; }
     const moved = Math.hypot(sx - rec.sx0, sy - rec.sy0);
     const t = rec.thing;
-    if (rec.pan) {
-      cam.x = cam.tx = rec.cx0 - (sx - rec.sx0) / G.scale;
-      cam.y = cam.ty = rec.cy0 - (sy - rec.sy0) / G.scale;
-      [cam.tx, cam.ty] = G.clampCam(cam.tx, cam.ty); [cam.x, cam.y] = [cam.tx, cam.ty];
-      return;
-    }
     if (t && t.draggable && !rec.drag && moved > (t.dragSlop || 10)) {
       rec.drag = true; t.held = rec; rec.ox = t.x - p.x; rec.oy = t.y - p.y;
       t.onDragStart && t.onDragStart(p, rec);
@@ -250,11 +249,14 @@
       t.onDrag ? t.onDrag(p, rec) : ((t.x = p.x + rec.ox), (t.y = p.y + rec.oy));
     } else if (t && t.draggable) {
       t.onRub && t.onRub(p, rec); // wiggling a finger on a critter tickles it
-    } else if ((!t || !t.onRub) && moved > 10) {
-      rec.pan = true; rec.sx0 = sx; rec.sy0 = sy; rec.cx0 = cam.x; rec.cy0 = cam.y;
-    } else {
-      const under = G.pickAt(p.x, p.y, (q) => q.onRub && !q.draggable);
-      if (under) under.onRub(p, rec); // strumming flowers, shells, crystals
+    } else if (moved > 6) {
+      // a finger sliding over the meadow strums and tickles whatever it passes, and leaves a sparkle trail
+      const under = G.pickAt(p.x, p.y, (q) => q.onRub);
+      if (under) under.onRub(p, rec);
+      else if (G.time - (rec.trail || 0) > 0.04) {
+        rec.trail = G.time;
+        G.spawn('sparkle', p.x, p.y, { vx: G.rand(-40, 40), vy: G.rand(-70, 10), life: 0.6, size: 9, color: G.pick(G.CONFETTI) });
+      }
     }
   });
   const release = (e) => {
@@ -268,7 +270,6 @@
     }
     if (rec.dead) return;
     const t = rec.thing, p = { x: rec.x, y: rec.y };
-    if (rec.pan) { cam.vx = G.clamp(-rec.svx / G.scale, -2500, 2500); cam.vy = G.clamp(-rec.svy / G.scale, -2500, 2500); return; }
     if (rec.drag) { t.held = null; t.onDrop && t.onDrop(p, rec); return; }
     const small = Math.hypot(rec.sx - rec.sx0, rec.sy - rec.sy0) < 14;
     if (e.type === 'pointercancel' || !small || G.time - rec.t0 > 0.8) return;
@@ -284,7 +285,7 @@
     const [sx, sy] = pos(e);
     if (e.ctrlKey) { G.setZoom(G.zoom * Math.exp(-e.deltaY * 0.01), sx, sy); return; }
     [cam.x, cam.y] = G.clampCam(cam.x + e.deltaX / G.scale, cam.y + e.deltaY / G.scale);
-    cam.tx = cam.x; cam.ty = cam.y; cam.vx = cam.vy = 0;
+    cam.glide = null;
   }, { passive: false });
   document.addEventListener('gesturestart', (e) => e.preventDefault()); // keep Safari from zooming the page itself
 
@@ -295,21 +296,31 @@
     const dt = Math.min(0.05, last ? now - last : 0.016);
     last = now; G.time += dt;
 
-    // camera: fling inertia, edge-scroll while carrying something, then ease toward the target
-    if (cam.vx || cam.vy) {
-      cam.tx += cam.vx * dt; cam.ty += cam.vy * dt;
-      const k = Math.exp(-3.5 * dt); cam.vx *= k; cam.vy *= k;
-      if (Math.hypot(cam.vx, cam.vy) < 8) cam.vx = cam.vy = 0;
-    }
+    // camera: glide to a spot, or roll smoothly (easing in and out) while an arrow is held or something
+    // is carried toward a screen edge; the closer to the edge, the faster it rolls
+    let ex = cam.pushX, ey = cam.pushY;
     for (const rec of G.pointers.values()) {
       if (!rec.drag) continue;
-      const m = 80, ex = rec.sx < m ? -1 : rec.sx > G.sw - m ? 1 : 0, ey = rec.sy < m ? -1 : rec.sy > G.sh - m ? 1 : 0;
-      cam.tx += ex * 700 * dt; cam.ty += ey * 700 * dt;
+      const m = 90;
+      ex += rec.sx < m ? -(1 - rec.sx / m) : rec.sx > G.sw - m ? 1 - (G.sw - rec.sx) / m : 0;
+      ey += rec.sy < m ? -(1 - rec.sy / m) : rec.sy > G.sh - m ? 1 - (G.sh - rec.sy) / m : 0;
       rec.vx *= Math.exp(-6 * dt); rec.vy *= Math.exp(-6 * dt);
     }
-    [cam.tx, cam.ty] = G.clampCam(cam.tx, cam.ty);
-    const ck = 1 - Math.exp(-7 * dt);
-    cam.x += (cam.tx - cam.x) * ck; cam.y += (cam.ty - cam.y) * ck;
+    if (ex || ey) cam.glide = null;
+    const ck = 1 - Math.exp(-(ex || ey ? 5 : 8) * dt), ROLL = 900; // ease in when pushed, settle a bit quicker when let go
+    cam.vx += (G.clamp(ex, -1, 1) * ROLL - cam.vx) * ck; cam.vy += (G.clamp(ey, -1, 1) * ROLL - cam.vy) * ck;
+    if (Math.abs(cam.vx) < 3 && !ex) cam.vx = 0;
+    if (Math.abs(cam.vy) < 3 && !ey) cam.vy = 0;
+    if (cam.glide) {
+      const gl = cam.glide; gl.t += dt;
+      const e = G.ease.inOut(Math.min(1, gl.t / gl.dur));
+      cam.x = G.lerp(gl.x0, gl.x1, e); cam.y = G.lerp(gl.y0, gl.y1, e); cam.vx = cam.vy = 0;
+      if (gl.t >= gl.dur) cam.glide = null;
+    } else { cam.x += cam.vx * dt; cam.y += cam.vy * dt; }
+    const [ccx, ccy] = G.clampCam(cam.x, cam.y);
+    if (ccx !== cam.x) cam.vx = 0;
+    if (ccy !== cam.y) cam.vy = 0;
+    cam.x = ccx; cam.y = ccy;
     for (const rec of G.pointers.values()) {
       if (!rec.drag || !rec.thing) continue;
       const p = toWorld(rec.sx, rec.sy); rec.x = p.x; rec.y = p.y;

@@ -40,7 +40,7 @@
     if (G.pot && Array.isArray(s.pot)) { G.pot.items = s.pot.slice(-6); G.pot.mixSoup(); }
     if (s.night) { G.night = 1; G.orb.mode = 'moon'; }
     if (s.zoom) G.setZoom(s.zoom);
-    if (s.cam) { G.camTo(s.cam[0], s.cam[1]); G.cam.x = G.cam.tx; G.cam.y = G.cam.ty; }
+    if (s.cam) G.camSet(s.cam[0], s.cam[1]);
   };
 
   setInterval(G.saveGame, 5000);

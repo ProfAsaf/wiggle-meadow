@@ -10,9 +10,14 @@ offline, and the meadow is remembered between visits (the title card has a "Star
 
 ## Getting around
 
-A 4 × 3 world. The see-through tabs on the screen edges move one area at a time; the map button (top right)
-opens a little map to jump anywhere. Swipe an empty spot to scroll, pinch to zoom in and out (trackpad pinch or
-`+`/`-` on a computer), and hold a critter against a screen edge to carry it along.
+A 4 × 3 world. A finger on the meadow never scrolls it, so dragging always moves the thing under your finger
+(sliding across empty grass just leaves sparkles). The view moves only when you ask:
+
+- **Arrow tabs** on the screen edges: tap to glide smoothly to the next area, hold to roll along.
+- **Carrying something to an edge**: hold a critter (or block, hat, apple…) near a screen edge and the view rolls
+  that way, faster the closer you get.
+- **The map button** (top right) opens a little map to glide anywhere.
+- **Pinch** with two fingers to zoom in and out (trackpad pinch or `+`/`-` on a computer; arrow keys work too).
 
 | | 1 | 2 | 3 | 4 |
 |---|---|---|---|---|

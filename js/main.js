@@ -100,23 +100,45 @@
   // ----- navigation: edge tabs, map, keyboard, zoom -----
   const cam = G.cam, $ = (id) => document.getElementById(id);
   const COLS = [800, 2400, 4000, 5600], ROWS = [-450, 450, 1350];
-  // Tabs hop to the next area's centre (or a screen at a time when zoomed in or on narrow phones).
+  // Arrow tabs: a tap glides smoothly to the next area (or most of a screen when zoomed in or on a phone);
+  // holding one rolls the view along until you let go.
   const next = (arr, v, d) => (d > 0 ? arr.find((a) => a > v + 10) ?? arr[arr.length - 1] : [...arr].reverse().find((a) => a < v - 10) ?? arr[0]);
-  const step = (dx, dy) => {
-    S().unlock(); S().whoosh();
-    const [cx, cy] = G.clampCam(cam.tx, cam.ty);
-    G.camTo(dx ? (G.vw >= 1400 ? next(COLS, cx, dx) : cx + dx * G.vw * 0.9) : cx, dy ? next(ROWS, cy, dy) : cy);
+  const glideStep = (dx, dy) => {
+    const [gx, gy] = G.camGoal();
+    G.camTo(dx ? (G.vw >= 1400 ? next(COLS, gx, dx) : gx + dx * G.vw * 0.9) : gx, dy ? next(ROWS, gy, dy) : gy);
+    S().whoosh();
   };
   const arrows = { navL: [-1, 0], navR: [1, 0], navU: [0, -1], navD: [0, 1] };
-  for (const id in arrows) $(id).addEventListener('click', () => step(...arrows[id]));
+  const KEYS = { ArrowLeft: 'navL', ArrowRight: 'navR', ArrowUp: 'navU', ArrowDown: 'navD' };
+  let hold = null;
+  const holdEnd = (tap) => {
+    if (!hold) return;
+    clearTimeout(hold.timer); $(hold.nav).classList.remove('held');
+    if (hold.rolling) G.push(0, 0); else if (tap) glideStep(...arrows[hold.nav]);
+    hold = null;
+  };
+  const holdStart = (key, nav) => {
+    S().unlock(); holdEnd(false);
+    const h = (hold = { key, nav, rolling: false });
+    h.timer = setTimeout(() => { if (hold === h) { h.rolling = true; G.push(...arrows[nav]); } }, 220);
+    $(nav).classList.add('held');
+  };
+  for (const id in arrows) {
+    const el = $(id);
+    el.addEventListener('pointerdown', (e) => { e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch (_) {} holdStart(e.pointerId, id); });
+    el.addEventListener('pointerup', () => holdEnd(true));
+    el.addEventListener('pointercancel', () => holdEnd(false));
+    el.addEventListener('click', (e) => { if (e.detail === 0) glideStep(...arrows[id]); }); // Enter/Space on a focused tab
+  }
   window.addEventListener('keydown', (e) => {
     if (!$('title').hidden) return;
-    const k = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
-    if (k) { e.preventDefault(); step(...k); }
+    if (KEYS[e.key]) { e.preventDefault(); if (!e.repeat) holdStart(e.key, KEYS[e.key]); }
     else if (e.key === '+' || e.key === '=') G.setZoom(G.zoom * 1.2);
     else if (e.key === '-' || e.key === '_') G.setZoom(G.zoom / 1.2);
     else if (e.key === '0') G.setZoom(1);
   });
+  window.addEventListener('keyup', (e) => { if (hold && hold.key === e.key) holdEnd(true); });
+  window.addEventListener('blur', () => holdEnd(false));
   const map = $('map'), mapBtn = $('mapBtn');
   const setMap = (open) => { map.hidden = !open; mapBtn.setAttribute('aria-expanded', String(open)); };
   mapBtn.addEventListener('click', () => { S().unlock(); S().click(); setMap(map.hidden); });
@@ -125,8 +147,9 @@
   G.canvas.addEventListener('pointerdown', () => setMap(false));
   let lastKey = '';
   G.onFrame = () => {
-    const [x0, y0] = G.clampCam(-1e9, -1e9), [x1, y1] = G.clampCam(1e9, 1e9);
-    const show = { navL: cam.tx > x0 + 5, navR: cam.tx < x1 - 5, navU: cam.ty > y0 + 5, navD: cam.ty < y1 - 5 };
+    const [x0, y0] = G.clampCam(-1e9, -1e9), [x1, y1] = G.clampCam(1e9, 1e9), [gx, gy] = G.camGoal();
+    const show = { navL: gx > x0 + 5, navR: gx < x1 - 5, navU: gy > y0 + 5, navD: gy < y1 - 5 };
+    if (hold && !show[hold.nav]) holdEnd(false); // rolled to the edge of the world
     const c = COLS.reduce((b, v, i) => (Math.abs(v - cam.x) < Math.abs(COLS[b] - cam.x) ? i : b), 0);
     const r = ROWS.reduce((b, v, i) => (Math.abs(v - cam.y) < Math.abs(ROWS[b] - cam.y) ? i : b), 0);
     const key = Object.values(show).join() + c + r + $('title').hidden;

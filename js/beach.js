@@ -4,11 +4,11 @@
 
   // ---------- the sea: waves wash in and out; tap for splashes (near) or dolphins (far) ----------
   class Sea {
-    constructor() { this.x = 4600; this.y = 760; this.x0 = 4400; this.z = 4; this.jumps = []; this.rings = []; this.waveT = 3; G.waters.push(this); }
-    get shore() { return 4400 + Math.sin(G.time * 0.9) * 30; }
+    constructor() { const B = G.BEACH; this.x = B + 1400; this.y = 760; this.x0 = B + 1200; this.z = 4; this.jumps = []; this.rings = []; this.waveT = 3; G.waters.push(this); }
+    get shore() { return this.x0 + Math.sin(G.time * 0.9) * 30; }
     inside(x) { return x > this.shore + 30; }
     bank() { return this.x0 - 140; }
-    hit(px, py) { return (px > this.shore && py > 690 && py < 915) || (px > 3400 && py > 606 && py < 700); }
+    hit(px, py) { return (px > this.shore && py > 690 && py < 915) || (px > G.BEACH + 200 && py > 606 && py < 700); }
     splash(x, k = 1) {
       S().splash();
       G.burst('drop', x, 770, Math.round(16 * k), { color: '#8fd8f7', angle: -Math.PI / 2, spread: 0.9, speed: 460 * k, g: 1200, size: 8 });
@@ -25,7 +25,7 @@
       this.rings = this.rings.filter((r) => r.a > 0);
       for (const j of this.jumps) { j.t += dt; if (j.t > 1.25 && !j.done) { j.done = true; G.burst('drop', j.x0 + j.dir * 160, 690, 10, { color: '#bfe9ff', angle: -Math.PI / 2, spread: 0.7, speed: 260, g: 900, size: 6 }); } }
       this.jumps = this.jumps.filter((j) => j.t < 1.3);
-      if ((this.waveT -= dt) < 0) { this.waveT = G.rand(4, 7); if (G.view.x1 > 3900 && G.view.y0 < 900) S().wave(); }
+      if ((this.waveT -= dt) < 0) { this.waveT = G.rand(5, 9); if (G.view.x1 > G.BEACH + 700 && G.view.y0 < 900) S().wave(); }
     }
     draw(c) {
       const sh = this.shore, t = G.time;
@@ -66,9 +66,10 @@
       this.sq.kick(3); S().toot();
       if (this.busy) return;
       this.busy = true;
-      let tx = G.rand(3650, 4700); if (Math.abs(tx - this.x) < 300) tx = this.x > 4150 ? tx - 450 : tx + 450;
-      this.dir = tx > this.x ? 1 : -1;
-      G.tween(this, { x: G.clamp(tx, 3650, 4720) }, 3.5, G.ease.inOut, () => (this.busy = false));
+      const lo = G.BEACH + 450, hi = G.BEACH + 1520;
+      let tx = G.rand(lo, hi); if (Math.abs(tx - this.x) < 300) tx = this.x > (lo + hi) / 2 ? tx - 450 : tx + 450;
+      tx = G.clamp(tx, lo, hi); this.dir = tx > this.x ? 1 : -1;
+      G.tween(this, { x: tx }, 3.5, G.ease.inOut, () => (this.busy = false));
     }
     update(dt) { this.sq.update(dt); }
     draw(c) {

@@ -3,21 +3,22 @@
 (() => {
   const G = window.G;
   G.rainbow = 0; G.rainbowX = 780;
-  const SAND0 = 3180, SAND1 = 3360; // grass fades into sand here
-  const SEA0 = 3380;                 // the sea begins on the horizon here
+  const B = G.BEACH;
+  const SAND0 = B - 20, SAND1 = B + 160; // grass fades into sand here
+  const SEA0 = B + 180;                  // the sea begins on the horizon here
   const hill = (x, base, amp, f, ph) => base + Math.sin(x * f + ph) * amp + Math.sin(x * f * 2.3 + ph * 2) * amp * 0.35;
-  const blades = Array.from({ length: 250 }, (_, i) => ({ x: i * 12.9 + ((i * 37) % 11), y: 770 + ((i * 53) % 120), h: 14 + ((i * 7) % 12) }));
-  const pebbles = Array.from({ length: 460 }, (_, i) => ({ x: (i * 173.3) % G.W, y: 935 + ((i * 97.7) % 850), r: 3 + (i % 5) * 1.6, c: i % 3 }));
+  const blades = Array.from({ length: Math.ceil(SAND0 / 12.9) }, (_, i) => ({ x: i * 12.9 + ((i * 37) % 11), y: 770 + ((i * 53) % 120), h: 14 + ((i * 7) % 12) }));
+  const pebbles = Array.from({ length: 620 }, (_, i) => ({ x: (i * 173.3) % G.W, y: 935 + ((i * 97.7) % 850), r: 3 + (i % 5) * 1.6, c: i % 3 }));
   const PEBBLE = ['#b58461', '#7a5038', '#c99b73'];
 
   // the tunnel: a wavy ceiling that bulges up into rooms, and a flat floor at G.UNDER
-  const ROOMS = [[150, 900, 1140], [2080, 2700, 1190], [3620, 4380, 1160]];
+  const ROOMS = [[150, 900, 1140], [3680, 4320, 1190], [B + 420, B + 1180, 1160]];
   const ceiling = (G.ceilingAt = (x) => {
     let y = 1300 + Math.sin(x * 0.004) * 22 + Math.sin(x * 0.011 + 2) * 12;
     for (const [a, b, top] of ROOMS) if (x > a && x < b) y = Math.min(y, G.lerp(y, top, Math.min(1, Math.sin(((x - a) / (b - a)) * Math.PI) * 1.7)));
     return y;
   });
-  G.SHAFTS = [1060, 2890, 3480];
+  G.SHAFTS = [1080, 3140, B + 280];
 
   G.paintBack = (c) => {
     const v = G.view, n = G.night, x0 = v.x0 - 10, x1 = v.x1 + 10, w = x1 - x0;
@@ -94,8 +95,9 @@
         c.fillStyle = PEBBLE[p.c]; c.beginPath(); c.ellipse(p.x, p.y, p.r * 1.35, p.r, 0.3, 0, G.TAU); c.fill();
       }
       c.strokeStyle = '#7a5038'; c.lineWidth = 7; c.lineCap = 'round'; // tree roots
-      for (const [dx, len] of [[-50, 180], [-10, 240], [30, 200], [70, 150]]) {
-        c.beginPath(); c.moveTo(760 + dx * 0.5, 905); c.quadraticCurveTo(760 + dx * 2.2, 905 + len * 0.5, 760 + dx * 3, 905 + len); c.stroke();
+      const tx = G.treeX || 760;
+      if (tx > x0 - 300 && tx < x1 + 300) for (const [dx, len] of [[-50, 180], [-10, 240], [30, 200], [70, 150]]) {
+        c.beginPath(); c.moveTo(tx + dx * 0.5, 905); c.quadraticCurveTo(tx + dx * 2.2, 905 + len * 0.5, tx + dx * 3, 905 + len); c.stroke();
       }
       c.fillStyle = '#5b3a2b';
       for (const sx of G.SHAFTS) {

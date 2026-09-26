@@ -25,6 +25,28 @@
       this.blink = 0; this.blinkT = G.rand(1, 4); this.mood = 'open'; this.moodT = 0;
       this.mouth = 'smile'; this.mouthT = 0; this.armT = 0; this.tongue = 0; this.flap = 0;
       this.lx = 0; this.ly = 0; this.giggleT = 0; this.dizzyT = 0; this.zT = 0; this.noteT = 0; this.seat = null;
+      this.wears = {}; this.onBlock = null; this.yuckT = 0;
+    }
+    // what a finger on the critter is touching: something it's wearing can be pulled off
+    wornAt(p) {
+      const s = this.s, lx = (p.x - this.x - (this.offX || 0)) / s, ly = (p.y - this.y - (this.offY || 0)) / s, W = this.wears;
+      const eyeY = this.kind === 'frog' ? -135 : -102, hatY = this.kind === 'frog' ? -158 : -142;
+      if (W.eyes && Math.abs(lx) < 44 && Math.abs(ly - eyeY) < 20) return 'eyes';
+      if (W.hat && Math.abs(lx) < 50 && ly > hatY - 60 && ly < hatY + 16) return 'hat';
+      if (W.neck && Math.abs(lx) < 36 && ly > -72 && ly < -38) return 'neck';
+      return null;
+    }
+    onPress(p, rec) { rec.wearSlot = this.wornAt(p); }
+    wear(type) {
+      const slot = G.WEAR[type].slot, old = this.wears[slot];
+      if (old) G.dropWear(old, this.x + G.rand(-40, 40), this.y - 150 * this.s, G.rand(-250, 250), -500);
+      this.wears[slot] = type; this.sq.kick(2.5); this.say('happy', 'open', 1.2); S().dress();
+      G.burst('sparkle', this.x, this.y - 120 * this.s, 10, { colors: G.CONFETTI, g: 0, speed: 200, size: 10 });
+    }
+    standOn(top) {
+      this.onBlock = top.block; this.y = top.y; this.sq.kick(Math.min(3, this.vy * 0.002));
+      this.vy = this.vx = 0; this.rot = 0; this.spin = 0;
+      this.setState('idle', G.rand(1, 2)); S().clack(6); this.say('happy', 'open', 0.8);
     }
     hit(px, py) {
       const s = this.s, dx = (px - this.x) / (58 * s), dy = (py - (this.y - 72 * s)) / (88 * s);
@@ -33,7 +55,7 @@
     say(mood = 'happy', mouth = 'open', t = 0.8) { this.mood = mood; this.mouth = mouth; this.moodT = this.mouthT = t; }
     setState(st, t = 0) { this.state = st; this.stateT = t; }
     jump(vy = -780, vx = 0) {
-      this.leaveSeat();
+      this.leaveSeat(); this.onBlock = null;
       this.setState('air'); this.vy = vy * (this.kind === 'chick' ? 0.8 : 1); this.vx = vx; this.y -= 2; this.sq.kick(-2.5);
     }
     sit(seat) {
@@ -85,11 +107,18 @@
       S().giggle(this.pitch);
       if (Math.random() < 0.6) G.spawn('heart', this.x + G.rand(-30, 30), this.y - 150 * this.s, { vy: -90, life: 1, size: 11, color: '#ff7aa2' });
     }
-    onDragStart() {
-      this.leaveSeat();
+    onDragStart(p, rec) {
+      if (rec && rec.wearSlot && this.wears[rec.wearSlot]) { // pulling off a hat/glasses/bow: drag that instead
+        const w = G.dropWear(this.wears[rec.wearSlot], p.x, p.y);
+        delete this.wears[rec.wearSlot];
+        this.held = null; w.held = rec; rec.thing = w; rec.ox = rec.oy = 0; S().pop(); this.sq.kick(1.5);
+        return;
+      }
+      this.leaveSeat(); this.onBlock = null;
       this.setState('held'); this.say('wide', 'o', 99); S().wheee(this.pitch);
     }
     onDrag(p, rec) {
+      if (rec.thing !== this) return;
       const y = p.y + rec.oy;
       this.x = G.clamp(p.x + rec.ox, 30, G.W - 30);
       this.y = Math.min(y, G.floorFor(y));
@@ -112,8 +141,14 @@
       this.say('closed', 'chew', 1.6); S().chomp();
       G.burst('dust', this.x, this.y - 80 * this.s, 8, { color: food.crumb || '#ffe1a8', size: 6, g: 500, up: 120, speed: 140 });
       G.after(1.6, () => {
-        this.say('happy', 'open', 1); S().yum(this.pitch); this.sq.kick(2);
-        G.burst('heart', this.x, this.y - 150 * this.s, 5, { colors: ['#ff6f91', '#ffb3c8'], up: 220, g: -60, speed: 110, size: 12 });
+        if (food.yucky) { // an odd soup: blegh!
+          this.yuckT = 2.2; this.say('closed', 'open', 2); S().bleh();
+          for (let i = 0; i < 6; i++) G.after(i * 0.08, () => this.tilt.kick(i % 2 ? -5 : 5));
+          G.burst('sparkle', this.x, this.y - 120 * this.s, 8, { color: '#9be07a', g: 0, speed: 120, size: 9 });
+        } else {
+          this.say('happy', 'open', 1); S().yum(this.pitch); this.sq.kick(2);
+          G.burst('heart', this.x, this.y - 150 * this.s, 5, { colors: ['#ff6f91', '#ffb3c8'], up: 220, g: -60, speed: 110, size: 12 });
+        }
         if (food.onEaten) food.onEaten(this);
       });
     }
@@ -121,6 +156,11 @@
     // ---------- behaviour ----------
     think() {
       if (G.night > 0.7 && !(this.wakeUntil > G.time)) { this.setState('sleep', 99); this.zT = 0.5; return; }
+      if (this.onBlock) { // pottering about on top of a block tower
+        const bb = this.onBlock.body.bounds; this.target = null;
+        this.tx = G.clamp(this.x + G.rand(-70, 70), bb.min.x + 22, bb.max.x - 22);
+        return this.setState(Math.random() < 0.5 ? 'walk' : 'idle', G.rand(1.5, 3));
+      }
       const food = G.things.find((t) => t.isFood && t.onGround && !t.held && !t.claimed && t.floor === this.floor && Math.abs(t.x - this.x) < 520);
       if (food) { food.claimed = this; this.target = food; this.tx = food.x - Math.sign(food.x - this.x || 1) * 40; return this.setState('walk', 6); }
       const ball = G.ball;
@@ -160,6 +200,11 @@
       this.armT -= dt; this.tongue = Math.max(0, this.tongue - dt); this.flap = Math.max(0, this.flap - dt);
       this.dizzyT = Math.max(0, this.dizzyT - dt);
       if (this.state !== 'held') this.swing *= 0.9;
+      this.yuckT = Math.max(0, this.yuckT - dt);
+      if (this.onBlock && this.state !== 'air' && this.state !== 'held' && this.state !== 'ride') {
+        const s = G.blockSurface(this.onBlock, this.x); // ride along as the tower wobbles, fall if it's gone
+        if (s === null) { this.onBlock = null; this.setState('air'); this.vy = 0; } else this.y = s;
+      }
       const fresh = G.time - G.look.t < 2.5 && Math.abs(G.look.x - this.x) < 900 && Math.abs(G.look.y - this.y) < 700;
       const tx = fresh ? G.clamp((G.look.x - this.x) / 300, -1, 1) : this.state === 'walk' ? this.dir * 0.7 : Math.sin(G.time * 0.7 + this.x) * 0.4;
       const ty = fresh ? G.clamp((G.look.y - (this.y - 100)) / 300, -1, 1) : 0;
@@ -175,12 +220,14 @@
           break;
         }
         case 'air':
+          this.py = this.y;
           this.vy += GRAV * dt; this.x += this.vx * dt; this.y += this.vy * dt;
           if (this.spin) this.rot += this.spin * dt * 1.6;
           if (this.x < 40 || this.x > G.W - 40) { this.x = G.clamp(this.x, 40, G.W - 40); this.vx *= -0.6; this.tilt.kick(4); }
           if (this.y < G.TOP + 80 && this.vy < 0) { this.y = G.TOP + 80; this.vy = 0; }
           if (this.floor === G.UNDER && this.y < G.GROUND + 480 && this.vy < 0) this.vy *= 0.5; // tunnel ceiling
           if (this.vy > 0 && G.catchers.some((c) => c.catches(this))) break;
+          if (this.vy > 0 && this.floor === G.GROUND) { const top = G.blockTop(this.x, this.py, this.y); if (top) { this.standOn(top); break; } }
           if (this.y >= this.floor && this.vy > 0) this.land();
           break;
         case 'walk': {
@@ -206,7 +253,7 @@
           if (G.night < 0.5) { this.setState('idle', 1); this.sq.kick(-2); this.say('happy', 'open', 1); this.voice(this.pitch); }
           break;
         default: // idle, eat
-          if (this.y < this.floor - 1) { this.setState('air'); break; }
+          if (!this.onBlock && this.y < this.floor - 1) { this.setState('air'); break; }
           if ((this.stateT -= dt) < 0) this.think();
       }
       this.sqv = sq;
@@ -215,7 +262,7 @@
     // ---------- drawing ----------
     draw(c) {
       const s = this.s, t = G.time, st = this.state;
-      if (st !== 'ride') {
+      if (st !== 'ride' && !this.onBlock) {
         const lift = this.floor - this.y, sh = G.clamp(1 - lift / 700, 0.35, 1);
         c.fillStyle = 'rgba(40,40,20,.18)';
         c.beginPath(); c.ellipse(this.x, this.floor + 4, 44 * s * sh, 10 * s * sh, 0, 0, G.TAU); c.fill();
@@ -256,6 +303,7 @@
       this.ears(c, t);
       G.circle(c, 0, -98, this.kind === 'bear' ? 46 : 43, this.body);
       this.face(c, t, sleepy);
+      if (G.drawWorn && (this.wears.hat || this.wears.eyes || this.wears.neck)) G.drawWorn(this, c, t);
       if (this.dizzyT > 0) for (let i = 0; i < 3; i++) {
         const a = t * 5 + (i * G.TAU) / 3;
         G.path(c, '#ffd84a', (p) => G.starPath(p, Math.cos(a) * 42, -150 + Math.sin(a) * 10, 9, 4), 2.5);
@@ -293,7 +341,8 @@
       if (k === 'penguin') G.ellipse(c, lx * 3, -94, 32, 28, '#ffffff', 0);
       const ey = k === 'frog' ? -135 : -102;
       G.eyes(c, lx * 5, ey + ly * 4, k === 'frog' ? 21 : 16, 5.5, lx, ly, this.blink, mood);
-      G.cheeks(c, lx * 3, -84, 27, 7.5);
+      if (this.yuckT > 0) { c.fillStyle = 'rgba(120,200,90,.6)'; for (const d of [-1, 1]) { c.beginPath(); c.arc(d * 27 + lx * 3, -84, 9, 0, G.TAU); c.fill(); } }
+      else G.cheeks(c, lx * 3, -84, 27, 7.5);
       if (k === 'bear') { G.ellipse(c, lx * 4, -82, 18, 13, this.belly, 0); G.ellipse(c, lx * 4, -89, 7, 5, G.INK, 0); }
       if (k === 'pup') { G.ellipse(c, lx * 4, -82, 17, 12, this.belly, 0); G.ellipse(c, lx * 4, -90, 8, 6, G.INK, 0); }
       if (k === 'bunny' || k === 'mouse') G.ellipse(c, lx * 4, -90, 5, 3.5, '#ff7fa3', 0);
@@ -310,6 +359,11 @@
       if (this.tongue > 0) {
         const L = Math.sin((this.tongue / 0.5) * Math.PI) * 60;
         c.strokeStyle = '#ff6f91'; c.lineWidth = 7; c.beginPath(); c.moveTo(mx, my); c.lineTo(mx + L * 0.8, my - L * 0.6); c.stroke();
+      }
+      if (this.yuckT > 0) { // blegh: wobbly mouth, tongue out
+        G.ellipse(c, mx + 4, my + 7, 6, 8, '#ff7aa2', 3);
+        G.path(c, null, (p) => { p.moveTo(mx - 12, my); for (let i = 1; i <= 4; i++) p.lineTo(mx - 12 + i * 6, my + (i % 2 ? -4 : 3)); }, 3.5);
+        return;
       }
       const m = this.mouth;
       if (m === 'open' || (m === 'chew' && Math.sin(t * 22) > 0)) {

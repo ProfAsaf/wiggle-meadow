@@ -100,6 +100,12 @@
     thunk() { tone({ f0: 220, f1: 90, dur: 0.12, vol: 0.3 }); noise({ dur: 0.05, vol: 0.15, type: 'lowpass', f0: 900 }); },
     toot() { tone({ type: 'triangle', f0: 392, dur: 0.18, vol: 0.2 }); tone({ type: 'triangle', f0: 523, dur: 0.3, vol: 0.2, at: 0.2 }); },
     launch() { noise({ dur: 2.2, vol: 0.3, type: 'lowpass', f0: 300, f1: 1800, attack: 0.3 }); tone({ f0: 80, f1: 400, dur: 2, vol: 0.1, attack: 0.3 }); },
+    clack(v = 5) { const f = 600 + Math.random() * 500; tone({ type: 'triangle', f0: f, f1: f * 0.7, dur: 0.06, vol: Math.min(0.22, v * 0.02), attack: 0.002 }); noise({ dur: 0.03, vol: Math.min(0.12, v * 0.01), f0: 2400 }); },
+    gulp() { tone({ f0: 500, f1: 180, dur: 0.18, vol: 0.2 }); tone({ f0: 300, f1: 700, dur: 0.1, vol: 0.12, at: 0.18 }); },
+    stir() { noise({ dur: 0.7, vol: 0.12, type: 'lowpass', f0: 400, f1: 900, attack: 0.2 }); for (let i = 0; i < 3; i++) tone({ f0: 300 + i * 90, f1: 700, dur: 0.08, vol: 0.08, at: 0.1 + i * 0.18 }); },
+    sizzle() { noise({ dur: 0.9, vol: 0.12, type: 'highpass', f0: 3000, attack: 0.05 }); },
+    bleh() { tone({ type: 'sawtooth', f0: 260, f1: 180, dur: 0.35, vol: 0.12, filter: 900, vib: 40, vibRate: 16 }); },
+    dress() { [659, 784, 988, 1319].forEach((f, i) => tone({ f0: f, dur: 0.25, vol: 0.1, at: i * 0.06 })); },
     bark(p = 1) { for (let i = 0; i < 2; i++) tone({ type: 'sawtooth', f0: 560 * p, f1: 380 * p, dur: 0.09, vol: 0.14, filter: 1700, at: i * 0.15 }); },
     transform() { tone({ f0: 300, f1: 1400, dur: 0.85, vol: 0.16, vib: 30, vibRate: 14, attack: 0.05 }); noise({ dur: 0.8, vol: 0.12, f0: 600, f1: 4000, q: 1, attack: 0.3 }); for (let i = 0; i < 5; i++) tone({ f0: PENTA[i + 2] * 2, dur: 0.4, vol: 0.07, at: 0.35 + i * 0.07 }); },
     powerDown() { tone({ f0: 1200, f1: 300, dur: 0.6, vol: 0.12, vib: 20, vibRate: 10 }); for (let i = 0; i < 4; i++) tone({ f0: PENTA[6 - i] * 2, dur: 0.35, vol: 0.06, at: i * 0.08 }); },
@@ -112,7 +118,7 @@
   // Ambient life: birds by day, crickets by night.
   setInterval(() => {
     if (!ready() || document.hidden) return;
-    if (window.G.night > 0.6) { if (Math.random() < 0.6) sfx.cricket(); }
-    else if (Math.random() < 0.25) tone({ f0: 2600 + Math.random() * 800, f1: 3600, dur: 0.06, vol: 0.03 });
-  }, 1400);
+    if (window.G.night > 0.6) { if (Math.random() < 0.4) sfx.cricket(); }
+    else if (Math.random() < 0.1) tone({ f0: 2600 + Math.random() * 800, f1: 3600, dur: 0.06, vol: 0.03 });
+  }, 1600);
 })();

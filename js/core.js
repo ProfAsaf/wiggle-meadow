@@ -1,10 +1,10 @@
 // Wiggle Meadow — core: math, tweens, springs, drawing helpers, particles, camera, input, loop.
 (() => {
   const G = (window.G = {
-    W: 4800, TOP: -900, BOTTOM: 1800, GROUND: 745, UNDER: 1560,
+    W: 6400, BEACH: 4800, TOP: -900, BOTTOM: 1800, GROUND: 745, UNDER: 1560,
     things: [], particles: [], tweens: [], timers: [], list: [],
     catchers: [], seats: [], waters: [],
-    time: 0, night: 0, scale: 1, vw: 1600, vh: 900, sw: 0, sh: 0,
+    time: 0, night: 0, scale: 1, base: 1, zoom: 1, ZMIN: 0.55, ZMAX: 2.4, vw: 1600, vh: 900, sw: 0, sh: 0, pinch: null,
     cam: { x: 800, y: 450, tx: 800, ty: 450, vx: 0, vy: 0 },
     view: { x0: 0, y0: 0, x1: 1600, y1: 900 },
     pointers: new Map(),
@@ -159,19 +159,28 @@
     G.vh >= G.BOTTOM - G.TOP ? (G.TOP + G.BOTTOM) / 2 : G.clamp(y, G.TOP + G.vh / 2, G.BOTTOM - G.vh / 2),
   ];
   G.camTo = (x, y) => { [cam.tx, cam.ty] = G.clampCam(x, y); cam.vx = cam.vy = 0; };
+  const applyScale = () => { G.scale = G.base * G.zoom; G.vw = G.sw / G.scale; G.vh = G.sh / G.scale; };
   G.resize = () => {
     dpr = Math.min(2, window.devicePixelRatio || 1);
     G.sw = window.innerWidth; G.sh = window.innerHeight;
     canvas.width = Math.round(G.sw * dpr); canvas.height = Math.round(G.sh * dpr);
     let s = Math.min(G.sw / 1600, G.sh / 900);
     s = Math.max(s, (G.sh / 900) * 0.72); // tall phones zoom in instead of shrinking the meadow
-    G.scale = s; G.vw = G.sw / s; G.vh = G.sh / s;
+    G.base = s; applyScale();
     [cam.x, cam.y] = G.clampCam(cam.x, cam.y);
     [cam.tx, cam.ty] = G.clampCam(cam.tx, cam.ty);
   };
   window.addEventListener('resize', G.resize);
   G.resize();
   const toWorld = (sx, sy) => ({ x: sx / G.scale + cam.x - G.vw / 2, y: sy / G.scale + cam.y - G.vh / 2 });
+  // Zoom around a screen point, keeping whatever is under it in place.
+  G.setZoom = (z, sx = G.sw / 2, sy = G.sh / 2) => {
+    const before = toWorld(sx, sy);
+    G.zoom = G.clamp(z, G.ZMIN, G.ZMAX); applyScale();
+    const after = toWorld(sx, sy);
+    [cam.x, cam.y] = G.clampCam(cam.x + before.x - after.x, cam.y + before.y - after.y);
+    cam.tx = cam.x; cam.ty = cam.y; cam.vx = cam.vy = 0;
+  };
 
   G.add = (t) => { G.things.push(t); return t; };
   G.pickAt = (x, y, filter) => {
@@ -196,9 +205,24 @@
     };
     G.pointers.set(e.pointerId, rec);
     cam.vx = cam.vy = 0;
-    if (thing && thing.onPress) thing.onPress(p, rec);
     try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+    // A second finger while the first isn't holding anything: pinch to zoom (and two-finger pan).
+    const other = [...G.pointers.values()].filter((r) => r !== rec && !r.dead && !r.drag && !(r.thing && r.thing.draggable));
+    if (!G.pinch && other.length === 1 && !(thing && thing.draggable)) {
+      const a = other[0], mx = (a.sx + sx) / 2, my = (a.sy + sy) / 2;
+      a.pinch = rec.pinch = true; a.pan = rec.pan = false;
+      G.pinch = { a, b: rec, d0: Math.max(20, Math.hypot(a.sx - sx, a.sy - sy)), z0: G.zoom, w0: toWorld(mx, my) };
+      return;
+    }
+    if (thing && thing.onPress) thing.onPress(p, rec);
   });
+  const pinchMove = () => {
+    const P = G.pinch, d = Math.hypot(P.a.sx - P.b.sx, P.a.sy - P.b.sy);
+    G.zoom = G.clamp((P.z0 * d) / P.d0, G.ZMIN, G.ZMAX); applyScale();
+    const w = toWorld((P.a.sx + P.b.sx) / 2, (P.a.sy + P.b.sy) / 2);
+    [cam.x, cam.y] = G.clampCam(cam.x + P.w0.x - w.x, cam.y + P.w0.y - w.y);
+    cam.tx = cam.x; cam.ty = cam.y;
+  };
   canvas.addEventListener('pointermove', (e) => {
     const rec = G.pointers.get(e.pointerId);
     if (!rec) return;
@@ -208,6 +232,8 @@
     rec.vx = G.lerp(rec.vx, (p.x - rec.x) / dt, 0.5); rec.vy = G.lerp(rec.vy, (p.y - rec.y) / dt, 0.5);
     rec.svx = G.lerp(rec.svx, (sx - rec.sx) / dt, 0.5); rec.svy = G.lerp(rec.svy, (sy - rec.sy) / dt, 0.5);
     rec.x = p.x; rec.y = p.y; rec.sx = sx; rec.sy = sy; rec.lt = G.time;
+    if (rec.dead) return;
+    if (rec.pinch) { if (G.pinch) pinchMove(); return; }
     const moved = Math.hypot(sx - rec.sx0, sy - rec.sy0);
     const t = rec.thing;
     if (rec.pan) {
@@ -235,6 +261,12 @@
     const rec = G.pointers.get(e.pointerId);
     if (!rec) return;
     G.pointers.delete(e.pointerId);
+    if (rec.pinch) { // lifting either finger ends the pinch; the other finger stays inert until lifted
+      const P = G.pinch;
+      if (P && (P.a === rec || P.b === rec)) { (P.a === rec ? P.b : P.a).dead = true; G.pinch = null; }
+      return;
+    }
+    if (rec.dead) return;
     const t = rec.thing, p = { x: rec.x, y: rec.y };
     if (rec.pan) { cam.vx = G.clamp(-rec.svx / G.scale, -2500, 2500); cam.vy = G.clamp(-rec.svy / G.scale, -2500, 2500); return; }
     if (rec.drag) { t.held = null; t.onDrop && t.onDrop(p, rec); return; }
@@ -246,6 +278,15 @@
   canvas.addEventListener('pointerup', release);
   canvas.addEventListener('pointercancel', release);
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+  // Trackpad pinch / ctrl+wheel zooms; a plain wheel or two-finger trackpad swipe scrolls.
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const [sx, sy] = pos(e);
+    if (e.ctrlKey) { G.setZoom(G.zoom * Math.exp(-e.deltaY * 0.01), sx, sy); return; }
+    [cam.x, cam.y] = G.clampCam(cam.x + e.deltaX / G.scale, cam.y + e.deltaY / G.scale);
+    cam.tx = cam.x; cam.ty = cam.y; cam.vx = cam.vy = 0;
+  }, { passive: false });
+  document.addEventListener('gesturestart', (e) => e.preventDefault()); // keep Safari from zooming the page itself
 
   // ---------- main loop ----------
   let last = 0;

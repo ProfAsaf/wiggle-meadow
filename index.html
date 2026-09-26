@@ -58,6 +58,11 @@
     display: grid; place-items: center; animation: pulse 1.6s ease-in-out infinite;
   }
   #play:active { transform: translateY(6px); box-shadow: 0 3px 0 var(--ink); }
+  #fresh {
+    margin-top: 6px; padding: 6px 16px; cursor: pointer; font: inherit; font-size: 16px; font-weight: 700; color: var(--ink);
+    background: var(--glass); border: 3px solid var(--glass-edge); border-radius: 999px;
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  }
   @keyframes pulse { 0%, 100% { scale: 1; } 50% { scale: 1.07; } }
   button:focus-visible { outline: 4px solid #fff; outline-offset: 3px; }
 
@@ -80,7 +85,7 @@
   /* the map opens from its button: tap a square to fly there */
   #map {
     position: absolute; top: 58px; right: 0;
-    display: grid; grid-template-columns: repeat(3, 40px); gap: 5px; padding: 8px;
+    display: grid; grid-template-columns: repeat(4, 40px); gap: 5px; padding: 8px;
     background: var(--cream); border: 4px solid var(--ink); border-radius: 16px; box-shadow: 0 5px 0 var(--ink);
   }
   #map button { width: 40px; height: 30px; padding: 0; cursor: pointer; border: 2px solid var(--ink); border-radius: 8px; position: relative; }
@@ -91,6 +96,8 @@
   }
   #map .space { background: linear-gradient(#1d2860, #4f9fe0); }
   #map .home { background: linear-gradient(#bfe6fa 48%, #90cd63 48%); }
+  #map .yard { background: linear-gradient(#bfe6fa 48%, #90cd63 48%); }
+  #map .yard::before { content: ""; position: absolute; left: 9px; bottom: 5px; width: 9px; height: 9px; background: #ffd84f; border: 2px solid #3b2f4a; border-radius: 2px; }
   #map .park { background: linear-gradient(#bfe6fa 48%, #b6e38f 48%); }
   #map .beach { background: linear-gradient(#bfe6fa 48%, transparent 48%), linear-gradient(90deg, #f3dca2 55%, #63c3ee 55%); }
   #map .under { background: linear-gradient(#9b6b4a 40%, #5b3a2b 40%); }
@@ -131,6 +138,7 @@
   <button id="play" type="button" aria-label="Play">
     <svg width="56" height="60" viewBox="0 0 56 60" aria-hidden="true"><path d="M10 6 L50 30 L10 54 Z" fill="#fff" stroke="#3b2f4a" stroke-width="6" stroke-linejoin="round"/></svg>
   </button>
+  <button id="fresh" type="button" hidden>Start a fresh meadow</button>
 </div>
 
 <div id="hud">
@@ -143,14 +151,17 @@
   </button>
   <nav id="map" aria-label="Map" hidden>
     <button type="button" class="space" data-c="0" data-r="0" aria-label="Sky above the house"></button>
-    <button type="button" class="space" data-c="1" data-r="0" aria-label="Outer space"></button>
-    <button type="button" class="space" data-c="2" data-r="0" aria-label="Sky above the beach"></button>
-    <button type="button" class="home" data-c="0" data-r="1" aria-label="House and garden"></button>
-    <button type="button" class="park" data-c="1" data-r="1" aria-label="Playground"></button>
-    <button type="button" class="beach" data-c="2" data-r="1" aria-label="Beach"></button>
+    <button type="button" class="space" data-c="1" data-r="0" aria-label="Sky above the toy yard"></button>
+    <button type="button" class="space" data-c="2" data-r="0" aria-label="Outer space"></button>
+    <button type="button" class="space" data-c="3" data-r="0" aria-label="Sky above the beach"></button>
+    <button type="button" class="home" data-c="0" data-r="1" aria-label="House, garden and kitchen"></button>
+    <button type="button" class="yard" data-c="1" data-r="1" aria-label="Toy yard"></button>
+    <button type="button" class="park" data-c="2" data-r="1" aria-label="Playground"></button>
+    <button type="button" class="beach" data-c="3" data-r="1" aria-label="Beach"></button>
     <button type="button" class="under" data-c="0" data-r="2" aria-label="Burrow"></button>
-    <button type="button" class="under" data-c="1" data-r="2" aria-label="Mole tunnels"></button>
-    <button type="button" class="under" data-c="2" data-r="2" aria-label="Treasure cave"></button>
+    <button type="button" class="under" data-c="1" data-r="2" aria-label="Fossil tunnel"></button>
+    <button type="button" class="under" data-c="2" data-r="2" aria-label="Mole tunnels"></button>
+    <button type="button" class="under" data-c="3" data-r="2" aria-label="Treasure cave"></button>
   </nav>
 </div>
 
@@ -159,6 +170,7 @@
 <button id="navU" class="nav" type="button" aria-label="Go up" hidden><svg width="24" height="24" viewBox="0 0 34 34" aria-hidden="true"><path d="M21 6 L9 17 L21 28" fill="none" stroke="#3b2f4a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 <button id="navD" class="nav" type="button" aria-label="Go down" hidden><svg width="24" height="24" viewBox="0 0 34 34" aria-hidden="true"><path d="M21 6 L9 17 L21 28" fill="none" stroke="#3b2f4a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
 <script src="js/core.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/backdrop.js"></script>
@@ -172,4 +184,8 @@
 <script src="js/skyzone.js"></script>
 <script src="js/underground.js"></script>
 <script src="js/caves.js"></script>
+<script src="js/blocks.js"></script>
+<script src="js/dressup.js"></script>
+<script src="js/kitchen.js"></script>
+<script src="js/save.js"></script>
 <script src="js/main.js"></script>

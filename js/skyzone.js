@@ -14,7 +14,7 @@
   const STRIPES = ['#ff8a7a', '#ffd84f', '#6cc3f0', '#ff9ed2', '#8fd16a', '#b9a3e3'];
   class HotAir {
     constructor(x, y) {
-      this.x = x; this.y = y; this.alt = y; this.z = 6; this.draggable = true; this.flame = 0; this.vx = 22; this.sq = new G.Spring(120, 6);
+      this.x = x; this.hx = x; this.y = y; this.alt = y; this.z = 6; this.draggable = true; this.flame = 0; this.vx = 10; this.sq = new G.Spring(120, 6);
       this.seat = { kind: 'basket', x, y: y - 22, rot: 0, occupant: null, fling: () => ({ vx: G.rand(-200, 200), vy: -500 }) };
       G.seats.push(this.seat);
       G.add(new Front(this, (c) => this.drawBasket(c, true), 8));
@@ -24,12 +24,12 @@
       return dx * dx + dy * dy < 1 || (Math.abs(px - this.x) < 50 && py > this.y - 70 && py < this.y);
     }
     onTap() { this.flame = 1.2; this.alt = Math.max(G.TOP + 360, this.alt - 110); S().burner(); this.sq.kick(2); }
-    onDrag(p, rec) { this.x = G.clamp(p.x + rec.ox, 150, G.W - 150); this.y = G.clamp(p.y + rec.oy, G.TOP + 330, 430); this.alt = this.y; this.sq.kick(rec.vx * 0.0004); }
+    onDrag(p, rec) { this.x = this.hx = G.clamp(p.x + rec.ox, 150, G.W - 150); this.y = G.clamp(p.y + rec.oy, G.TOP + 330, 430); this.alt = this.y; this.sq.kick(rec.vx * 0.0004); }
     update(dt) {
       this.sq.update(dt); this.flame = Math.max(0, this.flame - dt);
       if (!this.held) {
-        this.x += this.vx * dt;
-        if (this.x < 250 || this.x > G.W - 250) this.vx = -this.vx;
+        this.x += this.vx * dt; // drifts gently back and forth around where it was left
+        if (Math.abs(this.x - this.hx) > 350 || this.x < 250 || this.x > G.W - 250) this.vx = -Math.sign(this.x - this.hx || 1) * Math.abs(this.vx);
         this.alt = Math.min(this.alt + dt * 6, 300);
         this.y = G.lerp(this.y, this.alt + Math.sin(G.time * 0.9) * 12, 1 - Math.exp(-1.5 * dt));
       }

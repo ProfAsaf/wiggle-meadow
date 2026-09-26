@@ -42,7 +42,7 @@
       this.say('happy', 'open', 0.8);
     }
     transform() {
-      this.busy = true; this.leaveSeat(); this.setState('transform'); this.vx = this.vy = 0;
+      this.busy = true; this.leaveSeat(); this.onBlock = null; this.setState('transform'); this.vx = this.vy = 0;
       this.say('happy', 'open', 1.6); S().transform(); this.voice(this.pitch);
       G.tween(this, { rot: G.TAU * 2 }, 0.9, G.ease.inOut, () => (this.rot = 0));
       G.after(0.45, () => {
@@ -138,6 +138,7 @@
         this.rot = G.lerp(this.rot, G.clamp(this.vx * 0.0007, -0.45, 0.45), 0.12);
       }
       const sp = Math.hypot(this.vx, this.vy);
+      if (sp > 300) G.bumpBlocks(this.x + (this.offX || 0), this.y + (this.offY || 0) - 60, this.vx, this.vy, 95); // crash through towers
       if (sp > 380 && (this.trailT -= dt) < 0) {
         this.trailT = 0.03;
         G.spawn('sparkle', this.x + this.offX - Math.sign(this.vx) * 30, this.y + this.offY - 60, { vx: -this.vx * 0.1, vy: -this.vy * 0.1, life: 0.6, size: 9, color: G.pick(['#ffd84f', '#fff3b0', '#ff8a7a']) });

@@ -25,7 +25,9 @@ A 4 × 3 world. A finger on the meadow never scrolls it, so dragging always move
 | **Middle** | House, garden, campfire kitchen, apple tree, pond | Toy yard: blocks, dress-up trunk, trampoline | Playground: slide, swing, seesaw, ice-cream cart | Beach: sea, boat, whale, crab, sandcastle, shells |
 | **Down** | Burrow with beds and string lights | Fossil tunnel | Mole tunnels | Treasure cave, crystals |
 
-Several fingers can each carry something at the same time.
+Several fingers can each carry something at the same time. On a touch screen, whatever you pick up floats just
+above your fingertip on a sparkly "magic string", so your finger never hides it (with a mouse it stays under the
+pointer).
 
 ## Helping hands
 

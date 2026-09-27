@@ -49,6 +49,21 @@
   class Hints {
     constructor() { this.z = 40; this.always = true; this.pickable = false; }
     draw(c) {
+      // a sparkly "magic string" from the fingertip up to the thing it's holding (drawn behind the thing)
+      for (const rec of G.pointers.values()) {
+        if (!rec.drag || !(rec.lift > 4)) continue;
+        const k = 1 / G.scale, fx = rec.x, fy = rec.y, gy = fy - rec.lift * k, n = Math.max(2, Math.floor(rec.lift / 13));
+        c.lineWidth = 1.5 * k; c.strokeStyle = 'rgba(59,47,74,.55)';
+        for (let i = 0; i <= n; i++) {
+          const tw = 0.5 + 0.5 * Math.sin(G.time * 10 - i * 0.9);
+          c.fillStyle = i % 3 === 0 ? '#fff3a0' : '#ffffff'; c.globalAlpha = 0.6 + 0.4 * tw;
+          c.beginPath(); c.arc(fx + Math.sin(G.time * 6 + i) * 2 * k, fy - (i / n) * (fy - gy), (3.4 + tw * 2) * k, 0, G.TAU); c.fill(); c.stroke();
+        }
+        const rr = (19 + Math.sin(G.time * 8) * 2) * k;
+        c.globalAlpha = 0.7; c.lineWidth = 5 * k; c.strokeStyle = 'rgba(59,47,74,.35)'; c.beginPath(); c.arc(fx, fy, rr, 0, G.TAU); c.stroke();
+        c.lineWidth = 3 * k; c.strokeStyle = '#ffffff'; c.beginPath(); c.arc(fx, fy, rr, 0, G.TAU); c.stroke();
+        c.globalAlpha = 1;
+      }
       for (const rec of G.pointers.values()) {
         const t = rec.thing, s = rec.drag && t && t.snap;
         if (!s) continue;

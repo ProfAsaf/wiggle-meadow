@@ -169,6 +169,7 @@
   G.push = (dx, dy) => { cam.pushX = dx; cam.pushY = dy; if (dx || dy) cam.glide = null; };
   const applyScale = () => { G.scale = G.base * G.zoom; G.vw = G.sw / G.scale; G.vh = G.sh / G.scale; };
   G.resize = () => {
+    if (!window.innerWidth || !window.innerHeight) return; // not laid out yet (e.g. a hidden frame)
     dpr = Math.min(2, window.devicePixelRatio || 1);
     G.sw = window.innerWidth; G.sh = window.innerHeight;
     canvas.width = Math.round(G.sw * dpr); canvas.height = Math.round(G.sh * dpr);
@@ -190,6 +191,11 @@
     cam.glide = null; cam.vx = cam.vy = 0;
   };
 
+  // Things carried by a finger float up just above the fingertip so the finger never hides them
+  // (only for touch and pen; a mouse pointer hides nothing). Less lift near the top of the screen.
+  G.LIFT = 95;
+  const lifted = (rec, p) => ({ x: p.x, y: p.y - (rec.lift || 0) / G.scale });
+
   G.add = (t) => { G.things.push(t); return t; };
   G.pickAt = (x, y, filter) => {
     for (let i = G.list.length - 1; i >= 0; i--) {
@@ -209,7 +215,7 @@
     const thing = G.pickAt(p.x, p.y, (t) => !t.held);
     const rec = {
       sx0: sx, sy0: sy, sx, sy, x0: p.x, y0: p.y, x: p.x, y: p.y, t0: G.time, lt: G.time, thing,
-      drag: false, vx: 0, vy: 0,
+      drag: false, vx: 0, vy: 0, lift: 0, touch: e.pointerType !== 'mouse',
     };
     G.pointers.set(e.pointerId, rec);
     try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
@@ -246,7 +252,8 @@
       t.onDragStart && t.onDragStart(p, rec);
     }
     if (rec.drag) {
-      t.onDrag ? t.onDrag(p, rec) : ((t.x = p.x + rec.ox), (t.y = p.y + rec.oy));
+      const q = lifted(rec, p);
+      t.onDrag ? t.onDrag(q, rec) : ((t.x = q.x + rec.ox), (t.y = q.y + rec.oy));
     } else if (t && t.draggable) {
       t.onRub && t.onRub(p, rec); // wiggling a finger on a critter tickles it
     } else if (moved > 6) {
@@ -323,9 +330,11 @@
     cam.x = ccx; cam.y = ccy;
     for (const rec of G.pointers.values()) {
       if (!rec.drag || !rec.thing) continue;
+      const want = rec.touch ? G.clamp(rec.sy - 60, 0, G.LIFT) : 0; // ease up above the fingertip
+      rec.lift = G.lerp(rec.lift || 0, want, 1 - Math.exp(-14 * dt));
       const p = toWorld(rec.sx, rec.sy); rec.x = p.x; rec.y = p.y;
-      const t = rec.thing;
-      t.onDrag ? t.onDrag(p, rec) : ((t.x = p.x + rec.ox), (t.y = p.y + rec.oy));
+      const t = rec.thing, q = lifted(rec, p);
+      t.onDrag ? t.onDrag(q, rec) : ((t.x = q.x + rec.ox), (t.y = q.y + rec.oy));
     }
 
     for (let i = G.tweens.length - 1; i >= 0; i--) {

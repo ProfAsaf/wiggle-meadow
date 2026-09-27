@@ -51,13 +51,14 @@
     draw(c) {
       // a sparkly "magic string" from the fingertip up to the thing it's holding (drawn behind the thing)
       for (const rec of G.pointers.values()) {
-        if (!rec.drag || !(rec.lift > 4)) continue;
-        const k = 1 / G.scale, fx = rec.x, fy = rec.y, gy = fy - rec.lift * k, n = Math.max(2, Math.floor(rec.lift / 13));
+        const len = Math.hypot(rec.lift || 0, rec.liftX || 0);
+        if (!rec.drag || !(len > 4)) continue;
+        const k = 1 / G.scale, fx = rec.x, fy = rec.y, gx = fx + (rec.liftX || 0) * k, gy = fy - rec.lift * k, n = Math.max(2, Math.floor(len / 13));
         c.lineWidth = 1.5 * k; c.strokeStyle = 'rgba(59,47,74,.55)';
         for (let i = 0; i <= n; i++) {
-          const tw = 0.5 + 0.5 * Math.sin(G.time * 10 - i * 0.9);
+          const tw = 0.5 + 0.5 * Math.sin(G.time * 10 - i * 0.9), u = i / n;
           c.fillStyle = i % 3 === 0 ? '#fff3a0' : '#ffffff'; c.globalAlpha = 0.6 + 0.4 * tw;
-          c.beginPath(); c.arc(fx + Math.sin(G.time * 6 + i) * 2 * k, fy - (i / n) * (fy - gy), (3.4 + tw * 2) * k, 0, G.TAU); c.fill(); c.stroke();
+          c.beginPath(); c.arc(G.lerp(fx, gx, u) + Math.sin(G.time * 6 + i) * 2 * k, G.lerp(fy, gy, u), (3.4 + tw * 2) * k, 0, G.TAU); c.fill(); c.stroke();
         }
         const rr = (19 + Math.sin(G.time * 8) * 2) * k;
         c.globalAlpha = 0.7; c.lineWidth = 5 * k; c.strokeStyle = 'rgba(59,47,74,.35)'; c.beginPath(); c.arc(fx, fy, rr, 0, G.TAU); c.stroke();

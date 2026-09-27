@@ -191,10 +191,16 @@
     cam.glide = null; cam.vx = cam.vy = 0;
   };
 
-  // Things carried by a finger float up just above the fingertip so the finger never hides them
-  // (only for touch and pen; a mouse pointer hides nothing). Less lift near the top of the screen.
-  G.LIFT = 95;
-  const lifted = (rec, p) => ({ x: p.x, y: p.y - (rec.lift || 0) / G.scale });
+  // Things carried by a finger float up and to the left of the fingertip, clear of the finger and the hand
+  // (a right hand covers the area below and to the right). Near the left edge they float up-right instead,
+  // and near the top they rise less. Only for touch and pen; a mouse pointer hides nothing.
+  G.LIFT = 100; G.LIFT_SIDE = 60; // screen pixels
+  const lifted = (rec, p) => ({ x: p.x + (rec.liftX || 0) / G.scale, y: p.y - (rec.lift || 0) / G.scale });
+  const liftGoal = (rec) => {
+    if (!rec.touch) return [0, 0];
+    const side = 1 - 2 * G.clamp((rec.sx - 70) / 170, 0, 1); // +1 (right) hugging the left edge, -1 (left) elsewhere
+    return [side * G.LIFT_SIDE, G.clamp(rec.sy - 60, 0, G.LIFT)];
+  };
 
   G.add = (t) => { G.things.push(t); return t; };
   G.pickAt = (x, y, filter) => {
@@ -330,8 +336,8 @@
     cam.x = ccx; cam.y = ccy;
     for (const rec of G.pointers.values()) {
       if (!rec.drag || !rec.thing) continue;
-      const want = rec.touch ? G.clamp(rec.sy - 60, 0, G.LIFT) : 0; // ease up above the fingertip
-      rec.lift = G.lerp(rec.lift || 0, want, 1 - Math.exp(-14 * dt));
+      const [wx, wy] = liftGoal(rec), ek = 1 - Math.exp(-14 * dt); // ease up and aside, clear of the finger
+      rec.lift = G.lerp(rec.lift || 0, wy, ek); rec.liftX = G.lerp(rec.liftX || 0, wx, ek);
       const p = toWorld(rec.sx, rec.sy); rec.x = p.x; rec.y = p.y;
       const t = rec.thing, q = lifted(rec, p);
       t.onDrag ? t.onDrag(q, rec) : ((t.x = q.x + rec.ox), (t.y = q.y + rec.oy));
